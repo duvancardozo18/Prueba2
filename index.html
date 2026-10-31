@@ -29,8 +29,9 @@
     <section class="card">
       <form id="form" novalidate>
         <h2><span class="paso">1</span> Dirección del predio</h2>
-        <p class="hint">Elija la dirección tal como se escribe: <b>vía, número # cruce – placa</b>. Con la vía y el número ya puede buscar.</p>
+        <p class="hint">Elija la dirección tal como se escribe: <b>Carrera 16 # 164 – 12</b>. Con la vía y el número ya puede buscar.</p>
 
+        <div class="dir-fila">
         <div class="dir-linea" id="dirLinea">
           <label class="slot s-via">
             <select id="dVia" required><option value="">Vía…</option></select>
@@ -54,8 +55,8 @@
           </label>
           <span class="sep" aria-hidden="true">#</span>
           <label class="slot">
-            <select id="dCruce"><option value="">—</option></select>
-            <span>Cruce</span>
+            <select id="dCruce" aria-label="Número después del #"><option value="">—</option></select>
+            <span>&nbsp;</span>
           </label>
           <label class="slot extra">
             <select id="dLetraCruce"><option value="">—</option></select>
@@ -63,18 +64,20 @@
           </label>
           <span class="sep" aria-hidden="true">–</span>
           <label class="slot">
-            <select id="dPlaca"><option value="">—</option></select>
-            <span>Placa</span>
+            <select id="dPlaca" aria-label="Número después del guion"><option value="">—</option></select>
+            <span>&nbsp;</span>
           </label>
           <label class="slot extra">
             <select id="dCuadrante"><option value="">—</option></select>
             <span>Cuadrante</span>
           </label>
         </div>
-        <button type="button" id="btnExtras" class="link" aria-expanded="false" aria-controls="dirLinea">+ Agregar letra, BIS o cuadrante (ej.: 12A BIS, SUR)</button>
+
+        <button type="button" id="btnExtras" class="sec btn-extras" aria-expanded="false" aria-controls="dirLinea">+ Letra, BIS o cuadrante</button>
+        </div>
 
         <div class="dir-unidad" id="dirUnidad">
-          <p class="sub">Unidad dentro del predio <span>(opcional, se habilita al elegir la placa)</span></p>
+          <p class="sub">Unidad dentro del predio <span>(opcional, se habilita al completar la dirección)</span></p>
           <div class="dir-linea">
             <label class="slot">
               <select id="dInterior" disabled><option value="">—</option></select>
@@ -98,7 +101,8 @@
           </div>
         </div>
 
-        <h2><span class="paso">2</span> ¿Qué busca?</h2>
+        <details class="filtrar">
+          <summary><span class="paso">2</span> Filtrar (Opcional)</summary>
         <div class="grid">
           <label>Tipo de unidad
             <select id="tipo">
@@ -137,8 +141,9 @@
             </label>
           </div>
         </details>
+        </details>
 
-        <div class="actions">
+        <div class="actions der">
           <button type="submit" id="btnBuscar">Buscar inmuebles</button>
         </div>
       </form>

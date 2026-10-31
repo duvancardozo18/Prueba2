@@ -45,7 +45,7 @@
   function extras(on) {
     $('dirLinea').classList.toggle('con-extras', on);
     $('btnExtras').setAttribute('aria-expanded', String(on));
-    $('btnExtras').textContent = on ? '− Ocultar letra, BIS y cuadrante' : '+ Agregar letra, BIS o cuadrante (ej.: 12A BIS, SUR)';
+    $('btnExtras').textContent = on ? '− Ocultar letra, BIS y cuadrante' : '+ Letra, BIS o cuadrante';
   }
   function actualizarDir() {
     const d = leerDir();
@@ -65,8 +65,8 @@
     if (!f.via) { $('dirLegible').innerHTML = '<span class="vacio-dir">Elija la vía para empezar</span>'; return; }
     const pend = t => `<span class="pend">${t}</span>`;
     let h = NOMBRE_VIA[f.via] + ' ' + (f.num ? f.num + f.letra + (f.bis ? ' BIS' + (f.letraBis ? ' ' + f.letraBis : '') : '') : pend('nº'));
-    h += ' # ' + (f.cruce ? f.cruce + f.letraCruce : pend('cruce'));
-    h += ' – ' + (f.placa ? f.placa : pend('placa'));
+    h += ' # ' + (f.cruce ? f.cruce + f.letraCruce : pend('&nbsp;'));
+    h += ' – ' + (f.placa ? f.placa : pend('&nbsp;'));
     if (f.cuadrante) h += ' ' + f.cuadrante;
     const u = [f.interior && 'Interior ' + f.interior, f.unidadTipo && (f.unidadNum ? f.unidadTipo + ' ' + f.unidadNum : 'solo ' + f.unidadTipo)].filter(Boolean);
     if (u.length) h += ' <small>· ' + u.join(' · ') + '</small>';
