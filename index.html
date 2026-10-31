@@ -8,108 +8,178 @@
 </head>
 <body>
 <header>
-  <h1>Buscador de inmuebles y unidades privadas</h1>
-  <p>Catastro Bogotá · ArcGIS REST · el CHIP es el identificador de cada unidad</p>
+  <div class="header-in">
+    <div>
+      <h1>Buscador de inmuebles</h1>
+      <p>Catastro Bogotá · apartamentos, garajes y casas de un predio</p>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Secciones">
+      <button type="button" role="tab" id="tabBuscar" aria-selected="true" aria-controls="vistaBuscar">Buscar</button>
+      <button type="button" role="tab" id="tabInfo" aria-selected="false" aria-controls="vistaInfo">Info</button>
+    </nav>
+  </div>
 </header>
 
 <main>
-  <section class="card">
-    <h2>Búsqueda</h2>
-    <form id="form">
-      <div class="grid">
-        <label>Nombre del conjunto (solo referencia)
-          <input id="nombre" placeholder="Rincón del Palmar">
-        </label>
-        <label>Tipo de unidad
-          <select id="tipo">
-            <option value="">Todas (apartamentos, garajes, casas…)</option>
-            <option>Apartamento</option>
-            <option>Garaje</option>
-            <option>Casa</option>
-          </select>
-        </label>
-        <label>Dirección oficial
-          <input id="direccion" placeholder="KR 19 164 53">
-        </label>
-        <label>Barrio
-          <input id="barrio" placeholder="EL TOBERIN">
-        </label>
-        <label>Clasificación catastral
-          <input id="clase" value="P" maxlength="3">
-        </label>
-        <label>CHIP (opcional)
-          <input id="chip" placeholder="AAA0107SFDE">
-        </label>
-        <label>Código de manzana (opcional)
-          <input id="manzana" placeholder="19">
-        </label>
-        <label>Código de predio (opcional)
-          <input id="predio" placeholder="27">
-        </label>
-        <label>Máximo de resultados
-          <input id="max" type="number" value="2000" min="1" max="20000">
-        </label>
-      </div>
-      <details>
-        <summary>Configuración del servicio</summary>
-        <label>Endpoint (capa /query)
-          <input id="endpoint" value="https://serviciosgis.catastrobogota.gov.co/arcgis/rest/services/catastro/lote/MapServer/3/query">
-        </label>
-        <p class="hint">Este endpoint quedó como referencia y debe verificarse: abra la URL sin <code>/query</code> en el navegador y confirme la capa y sus campos.</p>
-      </details>
-      <div class="actions">
-        <button type="submit" id="btnBuscar">Buscar</button>
-        <button type="button" id="btnVerificar" class="sec">Verificar servicio</button>
-        <button type="button" id="btnPegar" class="sec">Cargar JSON pegado</button>
-        <button type="button" id="btnEjemplo" class="sec">Ver ejemplo</button>
-      </div>
-    </form>
-    <div id="estado" class="estado" role="status"></div>
-    <details>
-      <summary>Consulta generada</summary>
-      <pre id="sqlOut"></pre>
-    </details>
-    <details id="pegarBox">
-      <summary>Pegar respuesta JSON de ArcGIS (modo manual)</summary>
-      <textarea id="jsonPegado" rows="6" placeholder='{"features":[{"attributes":{...}}]}'></textarea>
-    </details>
-  </section>
+  <!-- ============ VISTA PRINCIPAL ============ -->
+  <div id="vistaBuscar" role="tabpanel" aria-labelledby="tabBuscar">
+    <section class="card">
+      <form id="form" novalidate>
+        <h2><span class="paso">1</span> Dirección del predio</h2>
+        <p class="hint">Elija cada parte de la dirección. Desde la calle o carrera ya se puede buscar; mientras más partes elija, más exacta será la búsqueda.</p>
+        <div class="dir-grid">
+          <label>Tipo de vía
+            <select id="dVia" required><option value="">Elegir…</option></select>
+          </label>
+          <label>Número
+            <select id="dNum"><option value="">—</option></select>
+          </label>
+          <label>Letra
+            <select id="dLetra" class="corto"><option value="">—</option></select>
+          </label>
+          <label>BIS
+            <select id="dBis" class="corto"><option value="">—</option><option value="1">BIS</option></select>
+          </label>
+          <label>Letra BIS
+            <select id="dLetraBis" class="corto" disabled><option value="">—</option></select>
+          </label>
+          <span class="numeral" aria-hidden="true">#</span>
+          <label>Número cruce
+            <select id="dCruce"><option value="">—</option></select>
+          </label>
+          <label>Letra
+            <select id="dLetraCruce" class="corto"><option value="">—</option></select>
+          </label>
+          <span class="numeral" aria-hidden="true">–</span>
+          <label>Placa
+            <select id="dPlaca"><option value="">—</option></select>
+          </label>
+          <label>Cuadrante
+            <select id="dCuadrante"><option value="">—</option></select>
+          </label>
+        </div>
+        <div class="dir-preview" aria-live="polite">
+          <span>Se buscará:</span> <code id="dirPreview">—</code>
+          <button type="button" id="btnLimpiarDir" class="link">Limpiar dirección</button>
+        </div>
 
-  <section class="card" id="resultados" hidden>
-    <div class="head">
-      <h2>Resultados</h2>
-      <div class="actions">
-        <button id="btnCsv" class="sec">Exportar CSV</button>
-        <button id="btnXls" class="sec">Exportar Excel</button>
+        <h2><span class="paso">2</span> ¿Qué busca?</h2>
+        <div class="grid">
+          <label>Tipo de unidad
+            <select id="tipo">
+              <option value="">Todas (apartamentos, garajes, casas…)</option>
+              <option>Apartamento</option>
+              <option>Garaje</option>
+              <option>Casa</option>
+            </select>
+          </label>
+          <label>Barrio (opcional)
+            <input id="barrio" placeholder="Ej.: EL TOBERIN" autocomplete="off">
+          </label>
+          <label>Nombre del conjunto (opcional)
+            <input id="nombre" placeholder="Se usa para nombrar el archivo exportado" autocomplete="off">
+          </label>
+        </div>
+
+        <details class="mas">
+          <summary>Más opciones</summary>
+          <div class="grid">
+            <label>Clasificación catastral
+              <select id="clase">
+                <option value="P" selected>P · Propiedad horizontal</option>
+                <option value="N">N · No propiedad horizontal</option>
+                <option value="">Cualquiera</option>
+              </select>
+            </label>
+            <label>Código de manzana
+              <input id="manzana" inputmode="numeric" placeholder="Ej.: 19">
+            </label>
+            <label>Código de predio
+              <input id="predio" inputmode="numeric" placeholder="Ej.: 27">
+            </label>
+            <label>Máximo de resultados
+              <input id="max" type="number" value="2000" min="1" max="20000">
+            </label>
+          </div>
+        </details>
+
+        <div class="actions">
+          <button type="submit" id="btnBuscar">Buscar inmuebles</button>
+        </div>
+      </form>
+      <div id="estado" class="estado" role="status"></div>
+    </section>
+
+    <section class="card" id="resultados" hidden>
+      <div class="head">
+        <h2>Resultados <span id="cuenta" class="cuenta"></span></h2>
+        <div class="actions">
+          <button id="btnCsv" class="sec">Descargar CSV</button>
+          <button id="btnXls" class="sec">Descargar Excel</button>
+        </div>
       </div>
-    </div>
-    <div id="resumen" class="resumen"></div>
-    <div class="filtros">
-      <input id="filtroTexto" placeholder="Filtrar por dirección o CHIP…">
-      <select id="filtroTipo">
-        <option value="">Todos los tipos</option>
-        <option>Apartamento</option>
-        <option>Casa</option>
-        <option>Garaje</option>
-        <option>Otro</option>
-      </select>
-    </div>
-    <div class="tabla-wrap">
-      <table id="tabla">
-        <thead>
-          <tr>
-            <th data-k="chip">CHIP</th><th data-k="direccion">Dirección</th>
-            <th data-k="tipo">Tipo</th><th data-k="interior">Interior</th>
-            <th data-k="unidad">Unidad</th><th data-k="barrio">Barrio</th>
-            <th data-k="manzana">Manzana</th><th data-k="predio">Predio</th>
-            <th data-k="clase">Clase</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-    <div id="alertas"></div>
-  </section>
+
+      <div id="segTipo" class="seg" role="group" aria-label="Filtrar por tipo"></div>
+
+      <div class="filtros">
+        <label class="f-texto">Buscar en los resultados
+          <input id="filtroTexto" type="search" placeholder="Ej.: AP 101, GJ 5, IN 2…" autocomplete="off">
+        </label>
+        <label>Interior / torre
+          <select id="filtroInterior"><option value="">Todos</option></select>
+        </label>
+        <button type="button" id="btnLimpiarFiltros" class="link">Quitar filtros</button>
+      </div>
+
+      <div class="tabla-wrap">
+        <table id="tabla">
+          <thead>
+            <tr>
+              <th data-k="direccion" aria-sort="ascending">Dirección</th>
+              <th data-k="tipo">Tipo</th><th data-k="interior">Interior</th>
+              <th data-k="unidad">Unidad</th><th data-k="barrio">Barrio</th>
+              <th data-k="manzana">Manzana</th><th data-k="predio">Predio</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <p id="vacio" class="vacio" hidden>Ningún resultado coincide con los filtros.</p>
+      </div>
+      <div id="alertas"></div>
+    </section>
+  </div>
+
+  <!-- ============ INFO (técnico) ============ -->
+  <div id="vistaInfo" role="tabpanel" aria-labelledby="tabInfo" hidden>
+    <section class="card">
+      <h2>Acerca del buscador</h2>
+      <p>Consulta el servicio ArcGIS REST de Catastro Bogotá, clasifica cada unidad por su dirección oficial (<code>AP</code> apartamento, <code>GJ</code> garaje, <code>IN</code> interior) y usa el CHIP como identificador interno para descartar duplicados. El CHIP se incluye en los archivos descargados.</p>
+      <p class="hint">El endpoint no se ha podido verificar desde el entorno de desarrollo. Si el navegador bloquea la consulta (CORS) use la carga manual de JSON de abajo.</p>
+    </section>
+
+    <section class="card">
+      <h2>Servicio</h2>
+      <label>Endpoint (capa /query)
+        <input id="endpoint" value="https://serviciosgis.catastrobogota.gov.co/arcgis/rest/services/catastro/lote/MapServer/3/query">
+      </label>
+      <div class="actions">
+        <button type="button" id="btnVerificar" class="sec">Verificar servicio</button>
+      </div>
+      <div id="estadoInfo" class="estado" role="status"></div>
+      <h3>Consulta generada</h3>
+      <pre id="sqlOut"></pre>
+    </section>
+
+    <section class="card">
+      <h2>Cargar JSON manualmente</h2>
+      <p class="hint">Abra la consulta generada en una pestaña del navegador, copie la respuesta y péguela aquí.</p>
+      <textarea id="jsonPegado" rows="6" placeholder='{"features":[{"attributes":{...}}]}'></textarea>
+      <div class="actions">
+        <button type="button" id="btnPegar">Cargar JSON</button>
+        <button type="button" id="btnEjemplo" class="sec">Ver ejemplo de JSON</button>
+      </div>
+    </section>
+  </div>
 </main>
 
 <script src="js/catastro-api.js"></script>

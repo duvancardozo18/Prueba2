@@ -8,10 +8,38 @@
   // Escapa comillas simples para SQL y comodines LIKE no se escapan a propósito
   function sqlStr(v) { return String(v).trim().replace(/'/g, "''").toUpperCase(); }
 
+  // Tipos de vía con la abreviatura que usa Catastro en PREDIRECC
+  const TIPOS_VIA = [
+    ['CL', 'Calle'], ['KR', 'Carrera'], ['AC', 'Avenida Calle'], ['AK', 'Avenida Carrera'],
+    ['DG', 'Diagonal'], ['TV', 'Transversal'], ['AV', 'Avenida']
+  ];
+  const CUADRANTES = ['SUR', 'ESTE'];
+
+  /* Arma la dirección en el formato de PREDIRECC a partir de las partes
+     seleccionadas, p. ej. {via:'KR', num:'19', cruce:'164', placa:'53'} → "KR 19 164 53".
+     Devuelve el prefijo más largo que se pueda formar (búsqueda parcial). */
+  function buildDireccion(d) {
+    if (!d || !d.via || !d.num) return '';
+    const p = [d.via, d.num + (d.letra || '')];
+    if (d.bis) p.push('BIS' + (d.letraBis ? ' ' + d.letraBis : ''));
+    if (d.cruce) {
+      p.push(d.cruce + (d.letraCruce || ''));
+      if (d.placa) p.push(d.placa);
+    }
+    return p.join(' ');
+  }
+
   function buildWhere(f) {
     const w = [];
     if (f.chip) w.push(`PRECHIP = '${sqlStr(f.chip)}'`);
-    if (f.direccion) w.push(`PREDIRECC LIKE '%${sqlStr(f.direccion)}%'`);
+    // Dirección cerrada: coincide exacta o seguida de la unidad (" GJ 1", " IN 1 AP 101"),
+    // así "KR 19 164 5" no trae "KR 19 164 53"
+    const dir = f.direccion || buildDireccion(f.dir);
+    if (dir) {
+      const s = sqlStr(dir);
+      w.push(`(PREDIRECC = '${s}' OR PREDIRECC LIKE '${s} %')`);
+      if (f.dir && f.dir.cuadrante) w.push(`PREDIRECC LIKE '% ${sqlStr(f.dir.cuadrante)}%'`);
+    }
     if (f.barrio) w.push(`PRENBARRIO LIKE '%${sqlStr(f.barrio)}%'`);
     // Tipo de unidad: GJ y AP salen de la dirección oficial; casa = predio no PH destinado a vivienda
     if (f.tipo === 'Garaje') w.push("PREDIRECC LIKE '% GJ %'");
@@ -113,7 +141,7 @@
     return { filas: Array.from(vistos.values()), duplicados, sinChip };
   }
 
-  const api = { OUT_FIELDS, buildWhere, buildParams, verificarServicio, consultar, clasificar, normalizar, layerUrl };
+  const api = { OUT_FIELDS, TIPOS_VIA, CUADRANTES, buildDireccion, buildWhere, buildParams, verificarServicio, consultar, clasificar, normalizar, layerUrl };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.CatastroAPI = api;
 })(typeof window !== 'undefined' ? window : globalThis);
