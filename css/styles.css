@@ -77,3 +77,5 @@ button.link{background:none;border:none;padding:4px 0;color:var(--brand);text-de
 th[aria-sort="ascending"]::after{content:" ▲";font-size:.7em}
 th[aria-sort="descending"]::after{content:" ▼";font-size:.7em}
 #vistaInfo p{margin:0 0 10px}
+.dir-unidad{margin-top:10px}
+.dir-grid.dir-unidad label{flex:0 1 200px}

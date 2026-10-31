@@ -24,10 +24,15 @@
     if (d.bis) p.push('BIS' + (d.letraBis ? ' ' + d.letraBis : ''));
     if (d.cruce) {
       p.push(d.cruce + (d.letraCruce || ''));
-      if (d.placa) p.push(d.placa);
+      if (d.placa) {
+        p.push(d.placa);
+        if (d.interior) p.push('IN ' + d.interior);
+        if (d.unidadTipo && d.unidadNum) p.push(d.unidadTipo + ' ' + d.unidadNum);
+      }
     }
     return p.join(' ');
   }
+  const UNIDADES = [['AP', 'Apartamento'], ['GJ', 'Garaje'], ['CS', 'Casa'], ['LC', 'Local'], ['OF', 'Oficina'], ['DP', 'Depósito']];
 
   function buildWhere(f) {
     const w = [];
@@ -37,7 +42,11 @@
     const dir = f.direccion || buildDireccion(f.dir);
     if (dir) {
       const s = sqlStr(dir);
-      w.push(`(PREDIRECC = '${s}' OR PREDIRECC LIKE '${s} %')`);
+      const d = f.dir || {};
+      // Unidad elegida sin interior: aceptar también "… IN x AP 201"
+      const conIn = !f.direccion && d.placa && !d.interior && d.unidadTipo && d.unidadNum
+        ? ` OR PREDIRECC LIKE '${sqlStr(buildDireccion(Object.assign({}, d, { unidadTipo: '' })))} IN % ${sqlStr(d.unidadTipo + ' ' + d.unidadNum)}'` : '';
+      w.push(`(PREDIRECC = '${s}' OR PREDIRECC LIKE '${s} %'${conIn})`);
       if (f.dir && f.dir.cuadrante) w.push(`PREDIRECC LIKE '% ${sqlStr(f.dir.cuadrante)}%'`);
     }
     if (f.barrio) w.push(`PRENBARRIO LIKE '%${sqlStr(f.barrio)}%'`);
@@ -141,7 +150,7 @@
     return { filas: Array.from(vistos.values()), duplicados, sinChip };
   }
 
-  const api = { OUT_FIELDS, TIPOS_VIA, CUADRANTES, buildDireccion, buildWhere, buildParams, verificarServicio, consultar, clasificar, normalizar, layerUrl };
+  const api = { OUT_FIELDS, TIPOS_VIA, CUADRANTES, UNIDADES, buildDireccion, buildWhere, buildParams, verificarServicio, consultar, clasificar, normalizar, layerUrl };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.CatastroAPI = api;
 })(typeof window !== 'undefined' ? window : globalThis);

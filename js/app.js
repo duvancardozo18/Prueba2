@@ -25,21 +25,31 @@
   llenar('dPlaca', rango(1, 99));
   ['dLetra', 'dLetraBis', 'dLetraCruce'].forEach(id => llenar(id, LETRAS));
   llenar('dCuadrante', API.CUADRANTES);
+  llenar('dInterior', rango(1, 30));
+  llenar('dUnidadTipo', API.UNIDADES);
+  // Números de unidad: 1–99 (garajes, locales) y pisos 1–40 × 01–12 (AP 201, AP 1502…)
+  const nums = new Set(rango(1, 99));
+  for (let piso = 1; piso <= 40; piso++) for (let n = 1; n <= 12; n++) nums.add(String(piso * 100 + n));
+  llenar('dUnidadNum', Array.from(nums).sort((a, b) => a - b));
 
   function leerDir() {
     return {
       via: $('dVia').value, num: $('dNum').value, letra: $('dLetra').value, bis: !!$('dBis').value,
       letraBis: $('dBis').value ? $('dLetraBis').value : '', cruce: $('dCruce').value,
-      letraCruce: $('dLetraCruce').value, placa: $('dPlaca').value, cuadrante: $('dCuadrante').value
+      letraCruce: $('dLetraCruce').value, placa: $('dPlaca').value, cuadrante: $('dCuadrante').value,
+      interior: $('dInterior').value, unidadTipo: $('dUnidadTipo').value, unidadNum: $('dUnidadNum').value
     };
   }
   function actualizarDir() {
     $('dLetraBis').disabled = !$('dBis').value;
+    const sinPlaca = !$('dPlaca').value;
+    ['dInterior', 'dUnidadTipo', 'dUnidadNum'].forEach(id => { $(id).disabled = sinPlaca; if (sinPlaca) $(id).value = ''; });
+    $('dUnidadNum').disabled = sinPlaca || !$('dUnidadTipo').value;
     const d = API.buildDireccion(leerDir()), c = $('dCuadrante').value;
     $('dirPreview').textContent = d ? d + (c ? ' … ' + c : '') + (leerDir().placa ? '' : ' …') : '—';
   }
   function limpiarDir() {
-    ['dVia', 'dNum', 'dLetra', 'dBis', 'dLetraBis', 'dCruce', 'dLetraCruce', 'dPlaca', 'dCuadrante'].forEach(id => { $(id).value = ''; });
+    ['dVia', 'dNum', 'dLetra', 'dBis', 'dLetraBis', 'dCruce', 'dLetraCruce', 'dPlaca', 'dCuadrante', 'dInterior', 'dUnidadTipo', 'dUnidadNum'].forEach(id => { $(id).value = ''; });
     actualizarDir(); actualizarSql();
   }
 
