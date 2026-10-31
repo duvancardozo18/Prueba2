@@ -113,3 +113,4 @@ details.filtrar>summary::-webkit-details-marker{display:none}
 details.filtrar>summary::after{content:"▾";margin-left:auto;color:var(--muted)}
 details.filtrar[open]>summary::after{content:"▴"}
 details.filtrar[open]{padding-bottom:14px}
+#tabla.sin-conjunto th:first-child,#tabla.sin-conjunto td:first-child{display:none}

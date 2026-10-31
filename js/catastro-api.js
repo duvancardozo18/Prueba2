@@ -3,6 +3,8 @@
   'use strict';
 
   const OUT_FIELDS = ['PRECHIP', 'PREDIRECC', 'PRECLASE', 'PRENBARRIO', 'PRECMANZ', 'PRECPREDIO', 'PREUVIVIEN'];
+  // Posibles campos con el nombre del conjunto/edificio (varía según la capa); se usa el primero que traiga valor
+  const CAMPOS_CONJUNTO = ['PRENOMPH', 'NOMBRE_PH', 'NOMBREPH', 'PRENOMBRE', 'NOMBRE_CONJUNTO', 'CONJUNTO', 'NOM_PH', 'NOMBRE_EDIFICIO', 'NOMBRE'];
   const PAGE = 1000; // tamaño de página solicitado (el servidor puede limitarlo)
 
   // Escapa comillas simples para SQL y comodines LIKE no se escapan a propósito
@@ -66,7 +68,7 @@
   function buildParams(where, extra) {
     const p = new URLSearchParams({
       where: where,
-      outFields: OUT_FIELDS.join(','),
+      outFields: '*', // incluye el nombre del conjunto si la capa lo publica
       returnGeometry: 'false',
       orderByFields: 'PREDIRECC',
       f: 'json'
@@ -93,7 +95,8 @@
       nombre: j.name,
       maxRecordCount: j.maxRecordCount,
       soportaPaginacion: !!(j.advancedQueryCapabilities && j.advancedQueryCapabilities.supportsPagination),
-      camposFaltantes: faltan
+      camposFaltantes: faltan,
+      campoConjunto: CAMPOS_CONJUNTO.find(c => campos.includes(c)) || ''
     };
   }
 
@@ -130,7 +133,12 @@
   }
 
   // Convierte features en filas planas, deduplicando por CHIP
-  function normalizar(features) {
+  function nombreConjunto(a) {
+    for (const k of CAMPOS_CONJUNTO) { const v = a[k]; if (v != null && String(v).trim()) return String(v).trim(); }
+    return '';
+  }
+  // nombreDefault: nombre escrito por el usuario; se aplica solo a unidades de propiedad horizontal
+  function normalizar(features, nombreDefault) {
     const vistos = new Map();
     let duplicados = 0, sinChip = 0;
     (features || []).forEach(ft => {
@@ -142,7 +150,9 @@
       const c = clasificar(a.PREDIRECC);
       // Predio no PH (clase N) sin sufijo de unidad: casa, salvo que se sepa que no es de vivienda
       if (c.tipo === 'Otro' && !c.unidad && String(a.PRECLASE || '').trim() === 'N' && String(a.PREUVIVIEN || '').trim() !== 'N') c.tipo = 'Casa';
+      const ph = String(a.PRECLASE || '').trim() === 'P' || !!c.unidad;
       vistos.set(key, {
+        conjunto: nombreConjunto(a) || (ph && nombreDefault ? String(nombreDefault).trim() : ''),
         chip, direccion: (a.PREDIRECC || '').trim(), tipo: c.tipo, interior: c.interior,
         unidad: c.unidad, barrio: (a.PRENBARRIO || '').trim(), manzana: a.PRECMANZ == null ? '' : String(a.PRECMANZ).trim(),
         predio: a.PRECPREDIO == null ? '' : String(a.PRECPREDIO).trim(), clase: (a.PRECLASE || '').trim()
@@ -151,7 +161,7 @@
     return { filas: Array.from(vistos.values()), duplicados, sinChip };
   }
 
-  const api = { OUT_FIELDS, TIPOS_VIA, CUADRANTES, UNIDADES, buildDireccion, buildWhere, buildParams, verificarServicio, consultar, clasificar, normalizar, layerUrl };
+  const api = { OUT_FIELDS, CAMPOS_CONJUNTO, nombreConjunto, TIPOS_VIA, CUADRANTES, UNIDADES, buildDireccion, buildWhere, buildParams, verificarServicio, consultar, clasificar, normalizar, layerUrl };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.CatastroAPI = api;
 })(typeof window !== 'undefined' ? window : globalThis);

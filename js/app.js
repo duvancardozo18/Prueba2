@@ -3,7 +3,7 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const API = window.CatastroAPI, EXP = window.ExportUtil;
-  const COLS = ['direccion', 'tipo', 'interior', 'unidad', 'barrio', 'manzana', 'predio'];
+  const COLS = ['conjunto', 'direccion', 'tipo', 'interior', 'unidad', 'barrio', 'manzana', 'predio'];
   const TIPOS = ['Apartamento', 'Casa', 'Garaje', 'Otro'];
   let filas = [], orden = { k: 'direccion', asc: true }, filtroTipo = '';
 
@@ -113,7 +113,7 @@
   // Todas las palabras escritas deben aparecer (en cualquier orden) en dirección, unidad, interior, barrio o CHIP
   function coincideTexto(r, palabras) {
     if (!palabras.length) return true;
-    const hay = ' ' + norm([r.direccion, r.unidad, r.interior && 'IN ' + r.interior, r.barrio, r.chip].join(' ')) + ' ';
+    const hay = ' ' + norm([r.conjunto, r.direccion, r.unidad, r.interior && 'IN ' + r.interior, r.barrio, r.chip].join(' ')) + ' ';
     return palabras.every(p => hay.includes(' ' + p) || (p.length > 2 && hay.includes(p)));
   }
   function filtrar(sinTipo) {
@@ -150,6 +150,7 @@
     });
     tb.innerHTML = ''; tb.appendChild(frag);
     $('vacio').hidden = v.length > 0;
+    document.getElementById('tabla').classList.toggle('sin-conjunto', !filas.some(r => r.conjunto));
     $('cuenta').textContent = v.length === filas.length ? `${filas.length}` : `${v.length} de ${filas.length}`;
     document.querySelectorAll('#tabla th').forEach(th => th.setAttribute('aria-sort', th.dataset.k === orden.k ? (orden.asc ? 'ascending' : 'descending') : 'none'));
     pintarSegmentos();
@@ -194,7 +195,7 @@
       const alertas = [];
       if (r.total > max) alertas.push(`Hay ${r.total} registros pero el máximo configurado es ${max}: resultados incompletos.`);
       if (r.features.length < Math.min(r.total, max)) alertas.push(`Se recibieron ${r.features.length} de ${r.total} registros: posible truncamiento del servidor.`);
-      mostrar(API.normalizar(r.features), alertas);
+      mostrar(API.normalizar(r.features, $('nombre').value), alertas);
       estado(r.features.length ? `Se encontraron ${r.features.length} inmuebles.` : 'No se encontraron inmuebles con esos datos. Pruebe con menos partes de la dirección.', alertas.length || !r.features.length ? 'warn' : 'ok');
     } catch (e) {
       estado('No se pudo consultar el servicio de Catastro (' + e.message + '). En la sección Info puede verificar el servicio o cargar los datos manualmente.', 'err');
@@ -206,6 +207,7 @@
     try {
       const v = await API.verificarServicio($('endpoint').value.trim());
       const msg = `Capa: ${v.nombre} · límite por consulta: ${v.maxRecordCount} · paginación: ${v.soportaPaginacion ? 'sí' : 'no informada'}` +
+        ` · nombre del conjunto: ${v.campoConjunto || 'no publicado (se usa el escrito en Filtrar)'}` +
         (v.camposFaltantes.length ? ` · CAMPOS FALTANTES: ${v.camposFaltantes.join(', ')}` : ' · campos requeridos presentes');
       estado(msg, v.camposFaltantes.length ? 'err' : 'ok', 'estadoInfo');
     } catch (e) { estado('El servicio no respondió: ' + e.message, 'err', 'estadoInfo'); }
@@ -220,7 +222,7 @@
       if (!feats) throw new Error('No se encontró «features».');
       const alertas = [];
       if (j.exceededTransferLimit) alertas.push('El JSON indica exceededTransferLimit: hay más registros que no se incluyeron.');
-      mostrar(API.normalizar(feats), alertas);
+      mostrar(API.normalizar(feats, $('nombre').value), alertas);
       estado(typeof msgExtra === 'string' ? msgExtra : `Datos cargados: ${feats.length} registros.`, alertas.length || typeof msgExtra === 'string' ? 'warn' : 'ok');
       estado('', '', 'estadoInfo');
     } catch (e) { estado('JSON no válido: ' + e.message, 'err', 'estadoInfo'); }

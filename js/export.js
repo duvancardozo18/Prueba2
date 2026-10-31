@@ -2,7 +2,7 @@
 (function (root) {
   'use strict';
   const COLS = [
-    ['chip', 'CHIP'], ['direccion', 'Dirección'], ['tipo', 'Tipo'], ['interior', 'Interior'],
+    ['conjunto', 'Conjunto'], ['chip', 'CHIP'], ['direccion', 'Dirección'], ['tipo', 'Tipo'], ['interior', 'Interior'],
     ['unidad', 'Unidad'], ['barrio', 'Barrio'], ['manzana', 'Manzana'], ['predio', 'Predio'], ['clase', 'Clase']
   ];
 
@@ -12,7 +12,9 @@
     return /[",\n;]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   }
 
+  const colsCon = filas => filas.some(r => r.conjunto) ? COLS : COLS.filter(c => c[0] !== 'conjunto');
   function toCsv(filas) {
+    const COLS = colsCon(filas);
     const head = COLS.map(c => c[1]).join(',');
     const body = filas.map(r => COLS.map(c => csvCell(r[c[0]])).join(','));
     return '\ufeff' + [head].concat(body).join('\r\n');
@@ -22,6 +24,7 @@
 
   // Excel abre tablas HTML como .xls; columnas como texto para conservar ceros
   function toXls(filas) {
+    const COLS = colsCon(filas);
     const th = COLS.map(c => `<th>${c[1]}</th>`).join('');
     const tr = filas.map(r => '<tr>' + COLS.map(c =>
       `<td style="mso-number-format:'\\@'">${esc(r[c[0]])}</td>`).join('') + '</tr>').join('');
@@ -44,8 +47,9 @@
   function toPdf(filas, opts) {
     opts = opts || {};
     const W = 842, H = 595, M = 32, FS = 8.5, RH = 15;
-    const cols = [['chip', 'CHIP', 78], ['direccion', 'Dirección', 210], ['tipo', 'Tipo', 70], ['interior', 'Interior', 48],
-      ['unidad', 'Unidad', 62], ['barrio', 'Barrio', 160], ['manzana', 'Manzana', 50], ['predio', 'Predio', 50]];
+    const conConjunto = filas.some(r => r.conjunto);
+    const cols = (conConjunto ? [['conjunto', 'Conjunto', 130]] : []).concat([['chip', 'CHIP', 78], ['direccion', 'Dirección', 210], ['tipo', 'Tipo', 70], ['interior', 'Interior', 48],
+      ['unidad', 'Unidad', 62], ['barrio', 'Barrio', 160], ['manzana', 'Manzana', 50], ['predio', 'Predio', 50]]);
     const suma = cols.reduce((a, c) => a + c[2], 0);
     cols.forEach(c => { c[2] = c[2] * (W - M * 2) / suma; });
     const anchoTabla = W - M * 2;
