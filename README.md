@@ -14,6 +14,7 @@ Aplicación web estática (HTML + CSS + JavaScript, sin backend ni dependencias)
 
 - Construye el `WHERE` con comillas escapadas. La dirección coincide exacta o seguida de la unidad (`PREDIRECC = 'X' OR PREDIRECC LIKE 'X %'`), así `KR 19 164 5` no trae `KR 19 164 53`.
 - Consulta ArcGIS REST con `returnCountOnly` y pagina con `resultOffset` hasta el máximo configurado.
+- Obtiene el **nombre del conjunto** con una segunda consulta al censo de equipamiento comunal PH (`censoequipamientocomunalph/MapServer/0`), usando `CODIGO_LOTE = BARMANPRE` de la primera consulta (en grupos de 50 lotes). Agrega `NOMBRE_COPROPIEDAD` y `TIPO_PH` a la tabla, al PDF y al Excel.
 - Clasifica unidades por la dirección (`GJ` garaje, `AP` apartamento, `IN` interior).
 - Usa el **CHIP como identificador**; descarta duplicados y avisa de registros sin CHIP.
 - Alerta si hay truncamiento o huecos en la numeración de garajes.

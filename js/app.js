@@ -158,6 +158,21 @@
 
   function limpiarFiltros() { $('filtroTexto').value = ''; $('filtroInterior').value = ''; filtroTipo = ''; pintar(); }
 
+  // Completa el nombre del conjunto con la segunda consulta (censo PH) y repinta
+  async function completarConjuntos() {
+    const lotes = filas.map(r => r.lote).filter(Boolean);
+    if (!lotes.length) return;
+    $('cuentaConj').textContent = 'Buscando nombre del conjunto…';
+    try {
+      const mapa = await API.consultarConjuntos(lotes, $('endpointPH').value.trim());
+      const n = API.aplicarConjuntos(filas, mapa);
+      $('cuentaConj').textContent = n ? '' : 'El censo PH no reporta nombre de conjunto para este lote.';
+      if (n) pintar();
+    } catch (e) {
+      $('cuentaConj').textContent = 'No se pudo consultar el nombre del conjunto (' + e.message + ').';
+    }
+  }
+
   function mostrar(n, alertas) {
     filas = n.filas;
     vista('buscar');
@@ -177,6 +192,7 @@
     }
     $('alertas').innerHTML = al.map(a => `<p>⚠ ${a.replace(/</g, '&lt;')}</p>`).join('');
     pintar();
+    completarConjuntos();
     $('resultados').scrollIntoView({ behavior: 'smooth' });
   }
 

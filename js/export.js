@@ -2,7 +2,7 @@
 (function (root) {
   'use strict';
   const COLS = [
-    ['conjunto', 'Conjunto'], ['chip', 'CHIP'], ['direccion', 'Dirección'], ['tipo', 'Tipo'], ['interior', 'Interior'],
+    ['conjunto', 'Conjunto'], ['tipoPH', 'Tipo PH'], ['lote', 'Código lote'], ['chip', 'CHIP'], ['direccion', 'Dirección'], ['tipo', 'Tipo'], ['interior', 'Interior'],
     ['unidad', 'Unidad'], ['barrio', 'Barrio'], ['manzana', 'Manzana'], ['predio', 'Predio'], ['clase', 'Clase']
   ];
 
@@ -12,7 +12,7 @@
     return /[",\n;]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   }
 
-  const colsCon = filas => filas.some(r => r.conjunto) ? COLS : COLS.filter(c => c[0] !== 'conjunto');
+  const colsCon = filas => COLS.filter(c => !['conjunto', 'tipoPH', 'lote'].includes(c[0]) || filas.some(r => r[c[0]]));
   function toCsv(filas) {
     const COLS = colsCon(filas);
     const head = COLS.map(c => c[1]).join(',');

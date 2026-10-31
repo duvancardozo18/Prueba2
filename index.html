@@ -161,6 +161,7 @@
         </div>
       </div>
 
+      <p id="cuentaConj" class="hint" aria-live="polite"></p>
       <div id="segTipo" class="seg" role="group" aria-label="Filtrar por tipo"></div>
 
       <div class="filtros">
@@ -208,6 +209,9 @@
       <div class="actions">
         <button type="button" id="btnVerificar" class="sec">Verificar servicio</button>
       </div>
+      <label>Endpoint del nombre del conjunto (censo PH, por CODIGO_LOTE = BARMANPRE)
+        <input id="endpointPH" value="https://serviciosgis.catastrobogota.gov.co/arcgis/rest/services/ordenamientoterritorial/censoequipamientocomunalph/MapServer/0/query">
+      </label>
       <div id="estadoInfo" class="estado" role="status"></div>
       <h3>Consulta generada</h3>
       <pre id="sqlOut"></pre>

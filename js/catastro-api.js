@@ -5,7 +5,10 @@
   const OUT_FIELDS = ['PRECHIP', 'PREDIRECC', 'PRECLASE', 'PRENBARRIO', 'PRECMANZ', 'PRECPREDIO', 'PREUVIVIEN'];
   // Posibles campos con el nombre del conjunto/edificio (varía según la capa); se usa el primero que traiga valor
   const CAMPOS_CONJUNTO = ['PRENOMPH', 'NOMBRE_PH', 'NOMBREPH', 'PRENOMBRE', 'NOMBRE_CONJUNTO', 'CONJUNTO', 'NOM_PH', 'NOMBRE_EDIFICIO', 'NOMBRE'];
-  const PAGE = 1000; // tamaño de página solicitado (el servidor puede limitarlo)
+  const PAGE = 1000;
+  // Segunda consulta: censo de equipamiento comunal PH (nombre de la copropiedad por código de lote)
+  const ENDPOINT_PH = 'https://serviciosgis.catastrobogota.gov.co/arcgis/rest/services/ordenamientoterritorial/censoequipamientocomunalph/MapServer/0/query';
+  const CAMPOS_PH = ['CODIGO_LOTE', 'DIRECCION', 'NOMBRE_COPROPIEDAD', 'CONJUNTO_CERRADO', 'TIPO_PH', 'NOMBRE_BARRIO_CATASTRO']; // tamaño de página solicitado (el servidor puede limitarlo)
 
   // Escapa comillas simples para SQL y comodines LIKE no se escapan a propósito
   function sqlStr(v) { return String(v).trim().replace(/'/g, "''").toUpperCase(); }
@@ -137,6 +140,41 @@
     for (const k of CAMPOS_CONJUNTO) { const v = a[k]; if (v != null && String(v).trim()) return String(v).trim(); }
     return '';
   }
+  // Código de lote (12 dígitos: barrio 6 + manzana 3 + predio 3) = BARMANPRE
+  function codigoLote(a) {
+    if (a.BARMANPRE != null && String(a.BARMANPRE).trim()) return String(a.BARMANPRE).trim();
+    if (a.PRECBARRIO != null && a.PRECMANZ != null && a.PRECPREDIO != null) {
+      const p = (v, n) => String(v).trim().padStart(n, '0');
+      return p(a.PRECBARRIO, 6) + p(a.PRECMANZ, 3) + p(a.PRECPREDIO, 3);
+    }
+    return '';
+  }
+
+  // Consulta los nombres de copropiedad para varios lotes (lotes de 50 por petición)
+  async function consultarConjuntos(lotes, endpoint) {
+    const unicos = Array.from(new Set(lotes.filter(Boolean))), mapa = {};
+    for (let i = 0; i < unicos.length; i += 50) {
+      const grupo = unicos.slice(i, i + 50);
+      const where = 'CODIGO_LOTE IN (' + grupo.map(l => `'${sqlStr(l)}'`).join(',') + ')';
+      const j = await getJson(endpoint || ENDPOINT_PH, new URLSearchParams({ where, outFields: CAMPOS_PH.join(','), returnGeometry: 'false', f: 'json' }));
+      (j.features || []).forEach(ft => {
+        const a = ft.attributes || {}, k = String(a.CODIGO_LOTE || '').trim();
+        if (k && a.NOMBRE_COPROPIEDAD && !mapa[k]) mapa[k] = {
+          nombre: String(a.NOMBRE_COPROPIEDAD).trim(),
+          cerrado: String(a.CONJUNTO_CERRADO || '').trim(), tipoPH: String(a.TIPO_PH || '').trim()
+        };
+      });
+    }
+    return mapa;
+  }
+
+  // Asigna el nombre del conjunto a cada fila según su lote
+  function aplicarConjuntos(filas, mapa) {
+    let n = 0;
+    filas.forEach(r => { const c = mapa[r.lote]; if (c) { r.conjunto = c.nombre; r.tipoPH = c.tipoPH; r.cerrado = c.cerrado; n++; } });
+    return n;
+  }
+
   // nombreDefault: nombre escrito por el usuario; se aplica solo a unidades de propiedad horizontal
   function normalizar(features, nombreDefault) {
     const vistos = new Map();
@@ -153,6 +191,7 @@
       const ph = String(a.PRECLASE || '').trim() === 'P' || !!c.unidad;
       vistos.set(key, {
         conjunto: nombreConjunto(a) || (ph && nombreDefault ? String(nombreDefault).trim() : ''),
+        lote: codigoLote(a), tipoPH: '', cerrado: '',
         chip, direccion: (a.PREDIRECC || '').trim(), tipo: c.tipo, interior: c.interior,
         unidad: c.unidad, barrio: (a.PRENBARRIO || '').trim(), manzana: a.PRECMANZ == null ? '' : String(a.PRECMANZ).trim(),
         predio: a.PRECPREDIO == null ? '' : String(a.PRECPREDIO).trim(), clase: (a.PRECLASE || '').trim()
@@ -161,7 +200,7 @@
     return { filas: Array.from(vistos.values()), duplicados, sinChip };
   }
 
-  const api = { OUT_FIELDS, CAMPOS_CONJUNTO, nombreConjunto, TIPOS_VIA, CUADRANTES, UNIDADES, buildDireccion, buildWhere, buildParams, verificarServicio, consultar, clasificar, normalizar, layerUrl };
+  const api = { ENDPOINT_PH, CAMPOS_PH, codigoLote, consultarConjuntos, aplicarConjuntos, OUT_FIELDS, CAMPOS_CONJUNTO, nombreConjunto, TIPOS_VIA, CUADRANTES, UNIDADES, buildDireccion, buildWhere, buildParams, verificarServicio, consultar, clasificar, normalizar, layerUrl };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.CatastroAPI = api;
 })(typeof window !== 'undefined' ? window : globalThis);
