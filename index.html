@@ -9,9 +9,12 @@
 <body>
 <header>
   <div class="header-in">
-    <div>
-      <h1>Buscador de inmuebles</h1>
-      <p>Catastro Bogotá · apartamentos, garajes y casas de un predio</p>
+    <div class="marca">
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect x="5" y="9" width="10" height="18" rx="1"/><rect x="17" y="4" width="10" height="23" rx="1"/><path d="M8 13h4M8 17h4M8 21h4M20 8h4M20 12h4M20 16h4M20 20h4" stroke-width="1.6"/><path d="M2 27h28" stroke-width="2"/></svg>
+      <div>
+        <h1>Buscador de inmuebles</h1>
+        <p>Catastro Bogotá · encuentre apartamentos, garajes y casas por dirección</p>
+      </div>
     </div>
     <nav class="tabs" role="tablist" aria-label="Secciones">
       <button type="button" role="tab" id="tabBuscar" aria-selected="true" aria-controls="vistaBuscar">Buscar</button>
@@ -26,52 +29,73 @@
     <section class="card">
       <form id="form" novalidate>
         <h2><span class="paso">1</span> Dirección del predio</h2>
-        <p class="hint">Elija cada parte de la dirección. Desde la calle o carrera ya se puede buscar; mientras más partes elija, más exacta será la búsqueda.</p>
-        <div class="dir-grid">
-          <label>Tipo de vía
-            <select id="dVia" required><option value="">Elegir…</option></select>
+        <p class="hint">Elija la dirección tal como se escribe: <b>vía, número # cruce – placa</b>. Con la vía y el número ya puede buscar.</p>
+
+        <div class="dir-linea" id="dirLinea">
+          <label class="slot s-via">
+            <select id="dVia" required><option value="">Vía…</option></select>
+            <span>Vía</span>
           </label>
-          <label>Número
+          <label class="slot">
             <select id="dNum"><option value="">—</option></select>
+            <span>Número</span>
           </label>
-          <label>Letra
-            <select id="dLetra" class="corto"><option value="">—</option></select>
+          <label class="slot extra">
+            <select id="dLetra"><option value="">—</option></select>
+            <span>Letra</span>
           </label>
-          <label>BIS
-            <select id="dBis" class="corto"><option value="">—</option><option value="1">BIS</option></select>
+          <label class="slot extra">
+            <select id="dBis"><option value="">—</option><option value="1">BIS</option></select>
+            <span>BIS</span>
           </label>
-          <label>Letra BIS
-            <select id="dLetraBis" class="corto" disabled><option value="">—</option></select>
+          <label class="slot extra">
+            <select id="dLetraBis" disabled><option value="">—</option></select>
+            <span>Letra BIS</span>
           </label>
-          <span class="numeral" aria-hidden="true">#</span>
-          <label>Número cruce
+          <span class="sep" aria-hidden="true">#</span>
+          <label class="slot">
             <select id="dCruce"><option value="">—</option></select>
+            <span>Cruce</span>
           </label>
-          <label>Letra
-            <select id="dLetraCruce" class="corto"><option value="">—</option></select>
+          <label class="slot extra">
+            <select id="dLetraCruce"><option value="">—</option></select>
+            <span>Letra</span>
           </label>
-          <span class="numeral" aria-hidden="true">–</span>
-          <label>Placa
+          <span class="sep" aria-hidden="true">–</span>
+          <label class="slot">
             <select id="dPlaca"><option value="">—</option></select>
+            <span>Placa</span>
           </label>
-          <label>Cuadrante
+          <label class="slot extra">
             <select id="dCuadrante"><option value="">—</option></select>
+            <span>Cuadrante</span>
           </label>
         </div>
-        <div class="dir-grid dir-unidad">
-          <label>Interior / torre (opcional)
-            <select id="dInterior" disabled><option value="">—</option></select>
-          </label>
-          <label>Unidad (opcional)
-            <select id="dUnidadTipo" disabled><option value="">—</option></select>
-          </label>
-          <label>Número de unidad
-            <select id="dUnidadNum" disabled><option value="">—</option></select>
-          </label>
+        <button type="button" id="btnExtras" class="link" aria-expanded="false" aria-controls="dirLinea">+ Agregar letra, BIS o cuadrante (ej.: 12A BIS, SUR)</button>
+
+        <div class="dir-unidad" id="dirUnidad">
+          <p class="sub">Unidad dentro del predio <span>(opcional, se habilita al elegir la placa)</span></p>
+          <div class="dir-linea">
+            <label class="slot">
+              <select id="dInterior" disabled><option value="">—</option></select>
+              <span>Interior / torre</span>
+            </label>
+            <label class="slot s-via">
+              <select id="dUnidadTipo" disabled><option value="">Todas</option></select>
+              <span>Tipo de unidad</span>
+            </label>
+            <label class="slot">
+              <select id="dUnidadNum" disabled><option value="">—</option></select>
+              <span>Número</span>
+            </label>
+          </div>
         </div>
-        <div class="dir-preview" aria-live="polite">
-          <span>Se buscará:</span> <code id="dirPreview">—</code>
-          <button type="button" id="btnLimpiarDir" class="link">Limpiar dirección</button>
+
+        <div class="placa-dir" aria-live="polite">
+          <div class="placa-txt" id="dirLegible"><span class="vacio-dir">Elija la vía para empezar</span></div>
+          <div class="placa-meta">Formato Catastro: <code id="dirPreview">—</code>
+            <button type="button" id="btnLimpiarDir" class="link">Limpiar</button>
+          </div>
         </div>
 
         <h2><span class="paso">2</span> ¿Qué busca?</h2>

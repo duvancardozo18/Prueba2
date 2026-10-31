@@ -47,6 +47,7 @@
       const conIn = !f.direccion && d.placa && !d.interior && d.unidadTipo && d.unidadNum
         ? ` OR PREDIRECC LIKE '${sqlStr(buildDireccion(Object.assign({}, d, { unidadTipo: '' })))} IN % ${sqlStr(d.unidadTipo + ' ' + d.unidadNum)}'` : '';
       w.push(`(PREDIRECC = '${s}' OR PREDIRECC LIKE '${s} %'${conIn})`);
+      if (d.placa && d.unidadTipo && !d.unidadNum) w.push(`PREDIRECC LIKE '% ${sqlStr(d.unidadTipo)} %'`);
       if (f.dir && f.dir.cuadrante) w.push(`PREDIRECC LIKE '% ${sqlStr(f.dir.cuadrante)}%'`);
     }
     if (f.barrio) w.push(`PRENBARRIO LIKE '%${sqlStr(f.barrio)}%'`);

@@ -13,7 +13,7 @@
     const s = $(id), frag = document.createDocumentFragment();
     valores.forEach(v => {
       const o = document.createElement('option');
-      if (Array.isArray(v)) { o.value = v[0]; o.textContent = v[0] + ' · ' + v[1]; } else { o.value = o.textContent = v; }
+      if (Array.isArray(v)) { o.value = v[0]; o.textContent = v[1] + ' (' + v[0] + ')'; } else { o.value = o.textContent = v; }
       frag.appendChild(o);
     });
     s.appendChild(frag);
@@ -40,13 +40,37 @@
       interior: $('dInterior').value, unidadTipo: $('dUnidadTipo').value, unidadNum: $('dUnidadNum').value
     };
   }
+  const NOMBRE_VIA = Object.fromEntries(API.TIPOS_VIA);
+  const ORDEN_REQ = ['dVia', 'dNum', 'dCruce', 'dPlaca'];
+  function extras(on) {
+    $('dirLinea').classList.toggle('con-extras', on);
+    $('btnExtras').setAttribute('aria-expanded', String(on));
+    $('btnExtras').textContent = on ? '− Ocultar letra, BIS y cuadrante' : '+ Agregar letra, BIS o cuadrante (ej.: 12A BIS, SUR)';
+  }
   function actualizarDir() {
-    $('dLetraBis').disabled = !$('dBis').value;
-    const sinPlaca = !$('dPlaca').value;
+    const d = leerDir();
+    $('dLetraBis').disabled = !d.bis;
+    if (!d.bis) $('dLetraBis').value = '';
+    const sinPlaca = !d.placa;
     ['dInterior', 'dUnidadTipo', 'dUnidadNum'].forEach(id => { $(id).disabled = sinPlaca; if (sinPlaca) $(id).value = ''; });
     $('dUnidadNum').disabled = sinPlaca || !$('dUnidadTipo').value;
-    const d = API.buildDireccion(leerDir()), c = $('dCuadrante').value;
-    $('dirPreview').textContent = d ? d + (c ? ' … ' + c : '') + (leerDir().placa ? '' : ' …') : '—';
+    if (!$('dUnidadTipo').value) $('dUnidadNum').value = '';
+    $('dirUnidad').classList.toggle('activo', !sinPlaca);
+    // Resalta el siguiente campo por llenar
+    const sig = ORDEN_REQ.find(id => !$(id).value);
+    ORDEN_REQ.forEach(id => $(id).closest('.slot').classList.toggle('siguiente', id === sig));
+    // Texto legible: "Carrera 16A BIS # 164 – 12 SUR · AP 201"
+    const f = leerDir(), cat = API.buildDireccion(f);
+    $('dirPreview').textContent = cat ? cat + (f.cuadrante && f.placa ? ' … ' + f.cuadrante : '') : '—';
+    if (!f.via) { $('dirLegible').innerHTML = '<span class="vacio-dir">Elija la vía para empezar</span>'; return; }
+    const pend = t => `<span class="pend">${t}</span>`;
+    let h = NOMBRE_VIA[f.via] + ' ' + (f.num ? f.num + f.letra + (f.bis ? ' BIS' + (f.letraBis ? ' ' + f.letraBis : '') : '') : pend('nº'));
+    h += ' # ' + (f.cruce ? f.cruce + f.letraCruce : pend('cruce'));
+    h += ' – ' + (f.placa ? f.placa : pend('placa'));
+    if (f.cuadrante) h += ' ' + f.cuadrante;
+    const u = [f.interior && 'Interior ' + f.interior, f.unidadTipo && (f.unidadNum ? f.unidadTipo + ' ' + f.unidadNum : 'solo ' + f.unidadTipo)].filter(Boolean);
+    if (u.length) h += ' <small>· ' + u.join(' · ') + '</small>';
+    $('dirLegible').innerHTML = h;
   }
   function limpiarDir() {
     ['dVia', 'dNum', 'dLetra', 'dBis', 'dLetraBis', 'dCruce', 'dLetraCruce', 'dPlaca', 'dCuadrante', 'dInterior', 'dUnidadTipo', 'dUnidadNum'].forEach(id => { $(id).value = ''; });
@@ -218,6 +242,7 @@
   $('form').addEventListener('change', () => { actualizarDir(); actualizarSql(); });
   $('endpoint').addEventListener('input', actualizarSql);
   $('btnLimpiarDir').addEventListener('click', limpiarDir);
+  $('btnExtras').addEventListener('click', () => extras(!$('dirLinea').classList.contains('con-extras')));
   $('btnVerificar').addEventListener('click', verificar);
   $('btnPegar').addEventListener('click', () => cargarPegado());
   $('btnEjemplo').addEventListener('click', cargarEjemplo);
