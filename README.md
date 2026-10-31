@@ -6,9 +6,10 @@ Aplicación web estática (HTML + CSS + JavaScript, sin backend ni dependencias)
 
 1. Abra `index.html` en el navegador (o sírvala con `python3 -m http.server`).
 2. Elija la dirección con las listas (tipo de vía, número, letra, BIS, cruce, placa, cuadrante). La app arma el texto en el formato de `PREDIRECC`, p. ej. `KR 19 164 53`.
-3. Pulse **Buscar inmuebles**.
-4. Filtre los resultados por tipo (pestañas con conteo), interior/torre o texto (`AP 101`, `GJ 5`…), ordene por columna y descargue **PDF** o **Excel** (incluye el CHIP).
-5. La pestaña **Info** reúne lo técnico: endpoint, verificación del servicio, consulta generada, carga manual de JSON y ejemplo.
+3. O use la pestaña **Por nombre de conjunto**: la lista de nombres (`NOMBRE_COPROPIEDAD`, valores distintos del censo PH) se carga una vez y se filtra mientras escribe. Al elegir uno se consultan sus `CODIGO_LOTE` y la búsqueda catastral usa `BARMANPRE IN (...)`.
+4. Pulse **Buscar inmuebles**.
+5. Filtre los resultados por tipo (pestañas con conteo), interior/torre o texto (`AP 101`, `GJ 5`…), ordene por columna y descargue **PDF** o **Excel** (incluye el CHIP).
+6. La pestaña **Info** reúne lo técnico: endpoint, verificación del servicio, consulta generada, carga manual de JSON y ejemplo.
 
 ## Qué hace
 

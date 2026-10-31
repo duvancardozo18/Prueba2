@@ -13,7 +13,7 @@
       <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect x="5" y="9" width="10" height="18" rx="1"/><rect x="17" y="4" width="10" height="23" rx="1"/><path d="M8 13h4M8 17h4M8 21h4M20 8h4M20 12h4M20 16h4M20 20h4" stroke-width="1.6"/><path d="M2 27h28" stroke-width="2"/></svg>
       <div>
         <h1>Buscador de inmuebles</h1>
-        <p>Catastro Bogotá · encuentre apartamentos, garajes y casas por dirección</p>
+        <p>Catastro Bogotá · encuentre apartamentos, garajes y casas por dirección o conjunto</p>
       </div>
     </div>
     <nav class="tabs" role="tablist" aria-label="Secciones">
@@ -28,6 +28,28 @@
   <div id="vistaBuscar" role="tabpanel" aria-labelledby="tabBuscar">
     <section class="card">
       <form id="form" novalidate>
+        <div class="modos" role="tablist" aria-label="Tipo de búsqueda">
+          <button type="button" role="tab" id="modoBtnDir" aria-selected="true" aria-controls="modoDir">Por dirección</button>
+          <button type="button" role="tab" id="modoBtnConj" aria-selected="false" aria-controls="modoConj">Por nombre de conjunto</button>
+        </div>
+
+        <div id="modoConj" role="tabpanel" hidden>
+          <h2><span class="paso">1</span> Nombre del conjunto</h2>
+          <div class="combo">
+            <input id="conjBuscar" type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="conjLista"
+              placeholder="Escriba parte del nombre, p. ej. RINCON DEL PALMAR" autocomplete="off">
+            <ul id="conjLista" role="listbox" hidden></ul>
+          </div>
+          <p id="conjEstado" class="hint" aria-live="polite"></p>
+          <div class="placa-dir" id="conjElegido" hidden>
+            <div class="placa-txt" id="conjNombre"></div>
+            <div class="placa-meta"><span id="conjLotes"></span>
+              <button type="button" id="btnLimpiarConj" class="link">Cambiar</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="modoDir" role="tabpanel">
         <h2><span class="paso">1</span> Dirección del predio</h2>
 
         <div class="dir-fila">
@@ -101,6 +123,7 @@
           <div class="placa-meta">Formato Catastro: <code id="dirPreview">—</code>
             <button type="button" id="btnLimpiarDir" class="link">Limpiar</button>
           </div>
+        </div>
         </div>
 
         <details class="filtrar">

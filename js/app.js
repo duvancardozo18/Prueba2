@@ -5,6 +5,7 @@
   const API = window.CatastroAPI, EXP = window.ExportUtil;
   const COLS = ['conjunto', 'direccion', 'tipo', 'interior', 'unidad', 'barrio', 'manzana', 'predio'];
   const TIPOS = ['Apartamento', 'Casa', 'Garaje', 'Otro'];
+  let modo = 'dir', conjuntos = null, cargandoConj = null, conjSel = null, activo = -1;
   let filas = [], orden = { k: 'direccion', asc: true }, filtroTipo = '';
 
   /* ---------- Selects de dirección ---------- */
@@ -93,7 +94,9 @@
   }
   function estado(msg, cls, id) { const e = $(id || 'estado'); e.textContent = msg; e.className = 'estado ' + (cls || ''); }
   function actualizarSql() {
-    const w = API.buildWhere(leerForm());
+    const f = leerForm();
+    if (modo === 'conj') { f.dir = null; f.lotes = (conjSel && conjSel.lotes) || ['<lote>']; }
+    const w = API.buildWhere(f);
     $('sqlOut').textContent = w + '\n\n' + $('endpoint').value.trim() + '?' + API.buildParams(w).toString();
   }
 
@@ -197,11 +200,74 @@
   }
 
   /* ---------- Acciones ---------- */
+  /* ---------- Búsqueda por nombre de conjunto ---------- */
+  function cambiarModo(m) {
+    modo = m;
+    $('modoDir').hidden = m !== 'dir'; $('modoConj').hidden = m !== 'conj';
+    $('modoBtnDir').setAttribute('aria-selected', String(m === 'dir'));
+    $('modoBtnConj').setAttribute('aria-selected', String(m === 'conj'));
+    if (m === 'conj') { cargarConjuntos(); if (!conjSel) $('conjBuscar').focus(); }
+    actualizarSql();
+  }
+  function cargarConjuntos() {
+    if (conjuntos || cargandoConj) return cargandoConj;
+    $('conjEstado').textContent = 'Cargando nombres de conjuntos…';
+    cargandoConj = API.listarConjuntos($('endpointPH').value.trim(), n => { $('conjEstado').textContent = `Cargando nombres de conjuntos… ${n}`; })
+      .then(l => { conjuntos = l.map(n => ({ n, k: norm(n) })); $('conjEstado').textContent = `${l.length} conjuntos disponibles. Escriba para filtrar.`; filtrarConj(); })
+      .catch(e => { $('conjEstado').textContent = 'No se pudo cargar la lista de conjuntos (' + e.message + '). Revise el endpoint en Info.'; })
+      .finally(() => { cargandoConj = null; });
+    return cargandoConj;
+  }
+  // Todas las palabras escritas deben aparecer en el nombre; primero los que empiezan igual
+  function filtrarConj() {
+    const ul = $('conjLista'), q = norm($('conjBuscar').value), pal = q.split(' ').filter(Boolean);
+    if (!conjuntos || !pal.length || conjSel) { ul.hidden = true; $('conjBuscar').setAttribute('aria-expanded', 'false'); return; }
+    const res = conjuntos.filter(c => pal.every(p => c.k.includes(p)))
+      .sort((a, b) => (b.k.startsWith(q) - a.k.startsWith(q)) || a.k.localeCompare(b.k)).slice(0, 60);
+    activo = res.length ? 0 : -1;
+    const re = new RegExp('(' + pal.map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'gi');
+    const esc = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    ul.innerHTML = res.length ? res.map((c, i) => `<li role="option" id="conjOp${i}" data-n="${esc(c.n).replace(/"/g, '&quot;')}" aria-selected="${i === activo}">${esc(c.n).replace(re, '<mark>$1</mark>')}</li>`).join('')
+      : '<li class="sin">Ningún conjunto coincide.</li>';
+    ul.hidden = false; $('conjBuscar').setAttribute('aria-expanded', 'true');
+  }
+  function moverActivo(d) {
+    const ops = $('conjLista').querySelectorAll('[role=option]'); if (!ops.length) return;
+    activo = (activo + d + ops.length) % ops.length;
+    ops.forEach((o, i) => o.setAttribute('aria-selected', String(i === activo)));
+    ops[activo].scrollIntoView({ block: 'nearest' });
+    $('conjBuscar').setAttribute('aria-activedescendant', ops[activo].id);
+  }
+  async function elegirConj(nombre) {
+    conjSel = { nombre, lotes: null };
+    $('conjBuscar').value = nombre; $('conjBuscar').hidden = true; $('conjLista').hidden = true;
+    $('conjElegido').hidden = false; $('conjNombre').textContent = nombre; $('conjLotes').textContent = 'Buscando lotes…';
+    $('conjEstado').textContent = '';
+    if (!$('nombre').value.trim() || $('nombre').dataset.auto) { $('nombre').value = nombre; $('nombre').dataset.auto = '1'; }
+    try {
+      const r = await API.lotesDeConjunto(nombre, $('endpointPH').value.trim());
+      if (!conjSel || conjSel.nombre !== nombre) return;
+      conjSel.lotes = r.lotes;
+      $('conjLotes').textContent = r.lotes.length ? `Código de lote: ${r.lotes.join(', ')}` : 'El censo no reporta lotes para este conjunto.';
+    } catch (e) { $('conjLotes').textContent = 'No se pudieron consultar los lotes (' + e.message + ').'; }
+    actualizarSql();
+  }
+  function limpiarConj() {
+    conjSel = null; $('conjElegido').hidden = true; $('conjBuscar').hidden = false; $('conjBuscar').value = '';
+    if ($('nombre').dataset.auto) { $('nombre').value = ''; delete $('nombre').dataset.auto; }
+    $('conjBuscar').focus(); actualizarSql();
+  }
+
   async function buscar(ev) {
     ev.preventDefault();
     actualizarSql();
     const f = leerForm(), max = Math.max(1, parseInt($('max').value, 10) || 2000);
-    if (!(API.buildDireccion(f.dir) || f.manzana || f.predio || f.barrio)) {
+    if (modo === 'conj') {
+      if (!conjSel) { estado('Elija un conjunto de la lista.', 'err'); $('conjBuscar').focus(); return; }
+      if (!conjSel.lotes) { try { conjSel.lotes = (await API.lotesDeConjunto(conjSel.nombre, $('endpointPH').value.trim())).lotes; } catch (e) { estado('No se pudieron consultar los lotes del conjunto (' + e.message + ').', 'err'); return; } }
+      if (!conjSel.lotes.length) { estado('El censo PH no reporta lotes para este conjunto.', 'warn'); return; }
+      f.dir = null; f.lotes = conjSel.lotes;
+    } else if (!(API.buildDireccion(f.dir) || f.manzana || f.predio || f.barrio)) {
       estado('Elija al menos el tipo de vía y el número de la dirección (o un barrio).', 'err'); $('dVia').focus(); return;
     }
     $('btnBuscar').disabled = true;
@@ -212,7 +278,7 @@
       if (r.total > max) alertas.push(`Hay ${r.total} registros pero el máximo configurado es ${max}: resultados incompletos.`);
       if (r.features.length < Math.min(r.total, max)) alertas.push(`Se recibieron ${r.features.length} de ${r.total} registros: posible truncamiento del servidor.`);
       mostrar(API.normalizar(r.features, $('nombre').value), alertas);
-      estado(r.features.length ? `Se encontraron ${r.features.length} inmuebles.` : 'No se encontraron inmuebles con esos datos. Pruebe con menos partes de la dirección.', alertas.length || !r.features.length ? 'warn' : 'ok');
+      estado(r.features.length ? `Se encontraron ${r.features.length} inmuebles.` : (modo === 'conj' ? 'No se encontraron inmuebles para ese conjunto.' : 'No se encontraron inmuebles con esos datos. Pruebe con menos partes de la dirección.'), alertas.length || !r.features.length ? 'warn' : 'ok');
     } catch (e) {
       estado('No se pudo consultar el servicio de Catastro (' + e.message + '). En la sección Info puede verificar el servicio o cargar los datos manualmente.', 'err');
     } finally { $('btnBuscar').disabled = false; }
@@ -260,6 +326,22 @@
   }
 
   /* ---------- Eventos ---------- */
+  $('modoBtnDir').addEventListener('click', () => cambiarModo('dir'));
+  $('modoBtnConj').addEventListener('click', () => cambiarModo('conj'));
+  $('conjBuscar').addEventListener('focus', () => { cargarConjuntos(); filtrarConj(); });
+  $('conjBuscar').addEventListener('input', filtrarConj);
+  $('conjBuscar').addEventListener('keydown', e => {
+    if ($('conjLista').hidden) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); moverActivo(1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); moverActivo(-1); }
+    else if (e.key === 'Enter') { const o = $('conjLista').querySelectorAll('[role=option]')[activo]; if (o) { e.preventDefault(); elegirConj(o.dataset.n); } }
+    else if (e.key === 'Escape') { $('conjLista').hidden = true; }
+  });
+  $('conjLista').addEventListener('mousedown', e => { const o = e.target.closest('[role=option]'); if (o) { e.preventDefault(); elegirConj(o.dataset.n); } });
+  $('conjBuscar').addEventListener('blur', () => setTimeout(() => { $('conjLista').hidden = true; }, 150));
+  $('btnLimpiarConj').addEventListener('click', limpiarConj);
+  $('nombre').addEventListener('input', () => delete $('nombre').dataset.auto);
+  $('endpointPH').addEventListener('change', () => { conjuntos = null; });
   $('tabBuscar').addEventListener('click', () => vista('buscar'));
   $('tabInfo').addEventListener('click', () => vista('info'));
   $('form').addEventListener('submit', buscar);

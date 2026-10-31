@@ -61,6 +61,8 @@
     else if (f.tipo === 'Apartamento') w.push("PREDIRECC LIKE '% AP %'");
     else if (f.tipo === 'Casa') w.push("PRECLASE = 'N'", "PREUVIVIEN = 'S'");
     if (f.clase && f.tipo !== 'Casa') w.push(`PRECLASE = '${sqlStr(f.clase)}'`);
+    // Búsqueda por conjunto: lotes del censo PH (CODIGO_LOTE = BARMANPRE)
+    if (f.lotes && f.lotes.length) w.push(`BARMANPRE IN (${f.lotes.map(l => `'${sqlStr(l)}'`).join(',')})`);
     if (f.manzana) w.push(`PRECMANZ = '${sqlStr(f.manzana)}'`);
     if (f.predio) w.push(`PRECPREDIO = '${sqlStr(f.predio)}'`);
     return w.length ? w.join('\nAND ') : '1=1';
@@ -168,6 +170,31 @@
     return mapa;
   }
 
+  // Lista de nombres de copropiedad (valores distintos), paginando de 2000 en 2000
+  async function listarConjuntos(endpoint, onProgress) {
+    const nombres = [];
+    for (let offset = 0; offset < 50000; offset += 2000) {
+      const j = await getJson(endpoint || ENDPOINT_PH, new URLSearchParams({
+        where: '1=1', outFields: 'NOMBRE_COPROPIEDAD', returnGeometry: 'false', returnDistinctValues: 'true',
+        orderByFields: 'NOMBRE_COPROPIEDAD', resultOffset: offset, resultRecordCount: 2000, f: 'json'
+      }));
+      const got = (j.features || []).map(ft => String((ft.attributes || {}).NOMBRE_COPROPIEDAD || '').trim()).filter(Boolean);
+      nombres.push(...got);
+      if (onProgress) onProgress(nombres.length);
+      if (!j.exceededTransferLimit || !got.length) break;
+    }
+    return Array.from(new Set(nombres));
+  }
+
+  // Lotes (CODIGO_LOTE) de un conjunto por su nombre exacto
+  async function lotesDeConjunto(nombre, endpoint) {
+    const j = await getJson(endpoint || ENDPOINT_PH, new URLSearchParams({
+      where: `NOMBRE_COPROPIEDAD = '${String(nombre).replace(/'/g, "''")}'`, outFields: CAMPOS_PH.join(','), returnGeometry: 'false', f: 'json'
+    }));
+    const feats = (j.features || []).map(ft => ft.attributes || {});
+    return { lotes: Array.from(new Set(feats.map(a => String(a.CODIGO_LOTE || '').trim()).filter(Boolean))), registros: feats };
+  }
+
   // Asigna el nombre del conjunto a cada fila según su lote
   function aplicarConjuntos(filas, mapa) {
     let n = 0;
@@ -200,7 +227,7 @@
     return { filas: Array.from(vistos.values()), duplicados, sinChip };
   }
 
-  const api = { ENDPOINT_PH, CAMPOS_PH, codigoLote, consultarConjuntos, aplicarConjuntos, OUT_FIELDS, CAMPOS_CONJUNTO, nombreConjunto, TIPOS_VIA, CUADRANTES, UNIDADES, buildDireccion, buildWhere, buildParams, verificarServicio, consultar, clasificar, normalizar, layerUrl };
+  const api = { listarConjuntos, lotesDeConjunto, ENDPOINT_PH, CAMPOS_PH, codigoLote, consultarConjuntos, aplicarConjuntos, OUT_FIELDS, CAMPOS_CONJUNTO, nombreConjunto, TIPOS_VIA, CUADRANTES, UNIDADES, buildDireccion, buildWhere, buildParams, verificarServicio, consultar, clasificar, normalizar, layerUrl };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.CatastroAPI = api;
 })(typeof window !== 'undefined' ? window : globalThis);
