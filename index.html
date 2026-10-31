@@ -34,8 +34,8 @@
         <div class="dir-fila">
         <div class="dir-linea" id="dirLinea">
           <label class="slot s-via">
-            <select id="dVia" required><option value="">Vía…</option></select>
-            <span>Vía</span>
+            <select id="dVia" required aria-label="Tipo de vía"><option value="">Vía…</option></select>
+            <span>&nbsp;</span>
           </label>
           <label class="slot">
             <select id="dNum"><option value="">—</option></select>
@@ -73,11 +73,14 @@
           </label>
         </div>
 
-        <button type="button" id="btnExtras" class="sec btn-extras" aria-expanded="false" aria-controls="dirLinea">+ Letra, BIS o cuadrante</button>
+        <div class="dir-botones">
+          <button type="button" id="btnExtras" class="sec btn-extras" aria-expanded="false" aria-controls="dirLinea">+ Letra, BIS o cuadrante</button>
+          <button type="button" id="btnUnidad" class="sec btn-extras" aria-expanded="false" aria-controls="dirUnidad" disabled title="Complete la dirección para elegir una unidad">+ Unidad dentro del predio</button>
+        </div>
         </div>
 
-        <div class="dir-unidad" id="dirUnidad">
-          <p class="sub">Unidad dentro del predio <span>(opcional, se habilita al completar la dirección)</span></p>
+        <div class="dir-unidad" id="dirUnidad" hidden>
+          <p class="sub">Unidad dentro del predio</p>
           <div class="dir-linea">
             <label class="slot">
               <select id="dInterior" disabled><option value="">—</option></select>

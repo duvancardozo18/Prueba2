@@ -88,8 +88,7 @@ header p{margin:2px 0 0;opacity:.85;font-size:.92rem}
 .dir-linea .extra{display:none}
 .dir-linea.con-extras .extra{display:flex}
 .dir-linea.con-extras .extra select{min-width:64px;font-size:.95rem;font-weight:500;background:var(--head)}
-.dir-unidad{margin-top:16px;padding-top:12px;border-top:1px dashed var(--line);opacity:.55;transition:opacity .2s}
-.dir-unidad.activo{opacity:1}
+.dir-unidad{margin-top:16px;padding-top:12px;border-top:1px dashed var(--line)}
 .sub{margin:0 0 8px;font-size:.85rem;font-weight:600}
 .sub span{font-weight:400;color:var(--muted)}
 .placa-dir{margin-top:16px;border-radius:10px;background:var(--head);border-left:4px solid var(--brand);padding:12px 14px}
@@ -103,8 +102,10 @@ header p{margin:2px 0 0;opacity:.85;font-size:.92rem}
 @media (max-width:520px){.slot.s-via{flex-basis:100%}.slot.s-via select{width:100%}.slot select{min-width:68px}}
 .dir-fila{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
 .dir-fila .dir-linea{flex:1 1 auto;min-width:0}
-.btn-extras{flex:none;margin-left:auto;padding:10px 14px;font-size:.88rem}
+.dir-botones{display:flex;flex-wrap:wrap;gap:8px;margin-left:auto;justify-content:flex-end}
+.btn-extras{flex:none;padding:10px 14px;font-size:.88rem}
 .btn-extras[aria-expanded="true"]{background:var(--head)}
+.btn-extras:disabled{cursor:not-allowed;opacity:.45}
 .actions.der{justify-content:flex-end}
 details.filtrar{margin-top:22px;border:1px solid var(--line);border-radius:8px;padding:0 14px}
 details.filtrar>summary{display:flex;align-items:center;gap:8px;padding:12px 0;font-size:1.05rem;font-weight:600;color:var(--ink);list-style:none}

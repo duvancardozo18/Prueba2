@@ -47,6 +47,12 @@
     $('btnExtras').setAttribute('aria-expanded', String(on));
     $('btnExtras').textContent = on ? '− Ocultar letra, BIS y cuadrante' : '+ Letra, BIS o cuadrante';
   }
+  function unidad(on) {
+    $('dirUnidad').hidden = !on;
+    $('btnUnidad').setAttribute('aria-expanded', String(on));
+    $('btnUnidad').textContent = on ? '− Quitar unidad' : '+ Unidad dentro del predio';
+    if (!on) ['dInterior', 'dUnidadTipo', 'dUnidadNum'].forEach(id => { $(id).value = ''; });
+  }
   function actualizarDir() {
     const d = leerDir();
     $('dLetraBis').disabled = !d.bis;
@@ -55,7 +61,8 @@
     ['dInterior', 'dUnidadTipo', 'dUnidadNum'].forEach(id => { $(id).disabled = sinPlaca; if (sinPlaca) $(id).value = ''; });
     $('dUnidadNum').disabled = sinPlaca || !$('dUnidadTipo').value;
     if (!$('dUnidadTipo').value) $('dUnidadNum').value = '';
-    $('dirUnidad').classList.toggle('activo', !sinPlaca);
+    $('btnUnidad').disabled = sinPlaca;
+    if (sinPlaca) unidad(false);
     // Resalta el siguiente campo por llenar
     const sig = ORDEN_REQ.find(id => !$(id).value);
     ORDEN_REQ.forEach(id => $(id).closest('.slot').classList.toggle('siguiente', id === sig));
@@ -242,6 +249,7 @@
   $('form').addEventListener('change', () => { actualizarDir(); actualizarSql(); });
   $('endpoint').addEventListener('input', actualizarSql);
   $('btnLimpiarDir').addEventListener('click', limpiarDir);
+  $('btnUnidad').addEventListener('click', () => { unidad($('dirUnidad').hidden); actualizarDir(); actualizarSql(); });
   $('btnExtras').addEventListener('click', () => extras(!$('dirLinea').classList.contains('con-extras')));
   $('btnVerificar').addEventListener('click', verificar);
   $('btnPegar').addEventListener('click', () => cargarPegado());
