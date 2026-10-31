@@ -176,7 +176,7 @@
     }
   }
 
-  function mostrar(n, alertas) {
+  function mostrar(n, alertas, conConjunto) {
     filas = n.filas;
     vista('buscar');
     $('resultados').hidden = false;
@@ -195,7 +195,7 @@
     }
     $('alertas').innerHTML = al.map(a => `<p>⚠ ${a.replace(/</g, '&lt;')}</p>`).join('');
     pintar();
-    completarConjuntos();
+    if (!conConjunto) completarConjuntos(); else $('cuentaConj').textContent = '';
     $('resultados').scrollIntoView({ behavior: 'smooth' });
   }
 
@@ -247,8 +247,9 @@
     try {
       const r = await API.lotesDeConjunto(nombre, $('endpointPH').value.trim());
       if (!conjSel || conjSel.nombre !== nombre) return;
-      conjSel.lotes = r.lotes;
-      $('conjLotes').textContent = r.lotes.length ? `Código de lote: ${r.lotes.join(', ')}` : 'El censo no reporta lotes para este conjunto.';
+      conjSel.lotes = r.lotes; conjSel.direcciones = r.direcciones; conjSel.registros = r.registros;
+      $('conjLotes').textContent = r.lotes.length ? `Código de lote: ${r.lotes.join(', ')}` + (r.direcciones.length ? ` · ${r.direcciones.join(' · ')}` : '')
+        : (r.direcciones.length ? `Sin código de lote; se buscará por dirección: ${r.direcciones.join(' · ')}` : 'El censo no reporta lotes para este conjunto.');
     } catch (e) { $('conjLotes').textContent = 'No se pudieron consultar los lotes (' + e.message + ').'; }
     actualizarSql();
   }
@@ -264,9 +265,13 @@
     const f = leerForm(), max = Math.max(1, parseInt($('max').value, 10) || 2000);
     if (modo === 'conj') {
       if (!conjSel) { estado('Elija un conjunto de la lista.', 'err'); $('conjBuscar').focus(); return; }
-      if (!conjSel.lotes) { try { conjSel.lotes = (await API.lotesDeConjunto(conjSel.nombre, $('endpointPH').value.trim())).lotes; } catch (e) { estado('No se pudieron consultar los lotes del conjunto (' + e.message + ').', 'err'); return; } }
-      if (!conjSel.lotes.length) { estado('El censo PH no reporta lotes para este conjunto.', 'warn'); return; }
-      f.dir = null; f.lotes = conjSel.lotes;
+      if (!conjSel.lotes) {
+        try { Object.assign(conjSel, await API.lotesDeConjunto(conjSel.nombre, $('endpointPH').value.trim())); }
+        catch (e) { estado('No se pudieron consultar los lotes del conjunto en el censo PH (' + e.message + ').', 'err'); return; }
+      }
+      if (!conjSel.lotes.length && !(conjSel.direcciones || []).length) { estado('El censo PH no reporta lotes ni dirección para este conjunto.', 'warn'); return; }
+      f.dir = null;
+      return buscarConjunto(f, max);
     } else if (!(API.buildDireccion(f.dir) || f.manzana || f.predio || f.barrio)) {
       estado('Elija al menos el tipo de vía y el número de la dirección (o un barrio).', 'err'); $('dVia').focus(); return;
     }
@@ -281,6 +286,40 @@
       estado(r.features.length ? `Se encontraron ${r.features.length} inmuebles.` : (modo === 'conj' ? 'No se encontraron inmuebles para ese conjunto.' : 'No se encontraron inmuebles con esos datos. Pruebe con menos partes de la dirección.'), alertas.length || !r.features.length ? 'warn' : 'ok');
     } catch (e) {
       estado('No se pudo consultar el servicio de Catastro (' + e.message + '). En la sección Info puede verificar el servicio o cargar los datos manualmente.', 'err');
+    } finally { $('btnBuscar').disabled = false; }
+  }
+
+  // Segunda consulta: predios de Catastro dentro de los lotes del conjunto, anidados bajo su nombre
+  async function buscarConjunto(f, max) {
+    $('btnBuscar').disabled = true;
+    estado('Buscando predios del conjunto…');
+    try {
+      const r = await API.consultarConjunto($('endpoint').value.trim(), f, max, (n, t) => estado(`Descargando ${n} de ${t}…`), conjSel);
+      $('sqlOut').textContent = (r.where || '(sin consulta)') + '\n\n' + $('endpoint').value.trim() + '?' + API.buildParams(r.where || '1=1').toString();
+      const fallidos = r.intentos.filter(i => i !== r.estrategia);
+      if (!r.features.length) {
+        $('resultados').hidden = true; filas = [];
+        const det = r.intentos.length
+          ? r.intentos.map(i => `${i.desc}: ${i.error ? 'error (' + i.error + ')' : '0 predios'}`).join(' · ')
+          : 'la capa de predios no tiene BARMANPRE, PRECBARRIO/PRECMANZ/PRECPREDIO ni PREDIRECC';
+        const todosError = r.intentos.length && r.intentos.every(i => i.error);
+        estado(`El censo PH encontró el conjunto (lote ${conjSel.lotes.join(', ') || '—'}), pero la capa de predios no devolvió inmuebles. Intentos: ${det}.` +
+          (todosError ? ' Revise el endpoint de predios en Info.' : (f.clase || f.tipo ? ' Pruebe quitando los filtros de clase o tipo de unidad.' : '')), todosError ? 'err' : 'warn');
+        return;
+      }
+      const alertas = [];
+      if (r.total > max) alertas.push(`Hay ${r.total} registros pero el máximo configurado es ${max}: resultados incompletos.`);
+      if (r.features.length < Math.min(r.total, max)) alertas.push(`Se recibieron ${r.features.length} de ${r.total} registros: posible truncamiento del servidor.`);
+      const incompleto = alertas.length > 0;
+      if (fallidos.length) alertas.push(`Predios encontrados por ${r.estrategia.desc} (sin resultados por: ${fallidos.map(i => i.desc + (i.error ? ' — ' + i.error : '')).join('; ')}).`);
+      const n = API.normalizar(r.features, '');
+      // Todos los predios están dentro del conjunto elegido
+      const reg = (conjSel.registros || [])[0] || {};
+      n.filas.forEach(x => { x.conjunto = conjSel.nombre; x.tipoPH = String(reg.TIPO_PH || '').trim(); x.cerrado = String(reg.CONJUNTO_CERRADO || '').trim(); });
+      mostrar(n, alertas, true);
+      estado(`${conjSel.nombre}: ${r.features.length} inmuebles.`, incompleto ? 'warn' : 'ok');
+    } catch (e) {
+      estado('No se pudo consultar la capa de predios de Catastro (' + e.message + '). En Info puede verificar el servicio.', 'err');
     } finally { $('btnBuscar').disabled = false; }
   }
 

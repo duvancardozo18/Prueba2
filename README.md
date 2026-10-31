@@ -6,7 +6,11 @@ Aplicación web estática (HTML + CSS + JavaScript, sin backend ni dependencias)
 
 1. Abra `index.html` en el navegador (o sírvala con `python3 -m http.server`).
 2. Elija la dirección con las listas (tipo de vía, número, letra, BIS, cruce, placa, cuadrante). La app arma el texto en el formato de `PREDIRECC`, p. ej. `KR 19 164 53`.
-3. O use la pestaña **Por nombre de conjunto**: la lista de nombres (`NOMBRE_COPROPIEDAD`, valores distintos del censo PH) se carga una vez y se filtra mientras escribe. Al elegir uno se consultan sus `CODIGO_LOTE` y la búsqueda catastral usa `BARMANPRE IN (...)`.
+3. O use la pestaña **Por nombre de conjunto**: la lista de nombres (`NOMBRE_COPROPIEDAD`, valores distintos del censo PH) se carga una vez y se filtra mientras escribe. Al elegir uno se consultan sus `CODIGO_LOTE` y su dirección, y luego se traen los predios de Catastro de esos lotes, todos bajo el nombre del conjunto. La app prueba en orden, y usa la primera que traiga predios:
+   1. `BARMANPRE IN (...)` con el lote normalizado a 12 dígitos (el censo puede publicar `CODIGO_LOTE` como número sin ceros a la izquierda). Si la capa declara `BARMANPRE` numérico, va sin comillas.
+   2. `PRECBARRIO` + `PRECMANZ` + `PRECPREDIO` del lote (con y sin ceros), por si la capa no publica `BARMANPRE`.
+   3. `PREDIRECC` = dirección del censo PH convertida al formato de Catastro (`CARRERA 19 # 164-53` → `KR 19 164 53`).
+   Los lotes van en grupos de 50. Si ninguna trae predios, el mensaje lista cada intento con su resultado o el error del servicio.
 4. Pulse **Buscar inmuebles**.
 5. Filtre los resultados por tipo (pestañas con conteo), interior/torre o texto (`AP 101`, `GJ 5`…), ordene por columna y descargue **PDF** o **Excel**.
 6. La pestaña **Info** reúne lo técnico: endpoint, verificación del servicio, consulta generada, carga manual de JSON y ejemplo.

@@ -10,6 +10,15 @@
   const ENDPOINT_PH = 'https://serviciosgis.catastrobogota.gov.co/arcgis/rest/services/ordenamientoterritorial/censoequipamientocomunalph/MapServer/0/query';
   const CAMPOS_PH = ['CODIGO_LOTE', 'DIRECCION', 'NOMBRE_COPROPIEDAD', 'CONJUNTO_CERRADO', 'TIPO_PH', 'NOMBRE_BARRIO_CATASTRO']; // tamaño de página solicitado (el servidor puede limitarlo)
 
+  /* Código de lote normalizado a 12 dígitos (barrio 6 + manzana 3 + predio 3).
+     El censo PH puede publicar CODIGO_LOTE como número (pierde los ceros a la izquierda:
+     8407019027 en lugar de 008407019027) o con decimales ("8407019027.0"). */
+  function normLote(v) {
+    let t = String(v == null ? '' : v).trim().replace(/\.0+$/, '');
+    if (/^\d+$/.test(t) && t.length < 12) t = t.padStart(12, '0');
+    return t;
+  }
+
   // Escapa comillas simples para SQL y comodines LIKE no se escapan a propósito
   function sqlStr(v) { return String(v).trim().replace(/'/g, "''").toUpperCase(); }
 
@@ -62,7 +71,8 @@
     else if (f.tipo === 'Casa') w.push("PRECLASE = 'N'", "PREUVIVIEN = 'S'");
     if (f.clase && f.tipo !== 'Casa') w.push(`PRECLASE = '${sqlStr(f.clase)}'`);
     // Búsqueda por conjunto: lotes del censo PH (CODIGO_LOTE = BARMANPRE)
-    if (f.lotes && f.lotes.length) w.push(`BARMANPRE IN (${f.lotes.map(l => `'${sqlStr(l)}'`).join(',')})`);
+    if (f.lotes && f.lotes.length) w.push(`BARMANPRE IN (${f.lotes.map(l => `'${sqlStr(normLote(l))}'`).join(',')})`);
+    if (f.whereExtra) w.push('(' + f.whereExtra + ')');
     if (f.manzana) w.push(`PRECMANZ = '${sqlStr(f.manzana)}'`);
     if (f.predio) w.push(`PRECPREDIO = '${sqlStr(f.predio)}'`);
     return w.length ? w.join('\nAND ') : '1=1';
@@ -109,6 +119,7 @@
   async function consultar(endpoint, f, max, onProgress) {
     const where = buildWhere(f);
     const total = (await getJson(endpoint, buildParams(where, { returnCountOnly: 'true' }))).count;
+    if (typeof total !== 'number') throw new Error('el servicio no devolvió el conteo de registros');
     const feats = [];
     let offset = 0;
     while (offset < Math.min(total, max)) {
@@ -144,7 +155,7 @@
   }
   // Código de lote (12 dígitos: barrio 6 + manzana 3 + predio 3) = BARMANPRE
   function codigoLote(a) {
-    if (a.BARMANPRE != null && String(a.BARMANPRE).trim()) return String(a.BARMANPRE).trim();
+    if (a.BARMANPRE != null && String(a.BARMANPRE).trim()) return normLote(a.BARMANPRE);
     if (a.PRECBARRIO != null && a.PRECMANZ != null && a.PRECPREDIO != null) {
       const p = (v, n) => String(v).trim().padStart(n, '0');
       return p(a.PRECBARRIO, 6) + p(a.PRECMANZ, 3) + p(a.PRECPREDIO, 3);
@@ -157,10 +168,10 @@
     const unicos = Array.from(new Set(lotes.filter(Boolean))), mapa = {};
     for (let i = 0; i < unicos.length; i += 50) {
       const grupo = unicos.slice(i, i + 50);
-      const where = 'CODIGO_LOTE IN (' + grupo.map(l => `'${sqlStr(l)}'`).join(',') + ')';
+      const where = 'CODIGO_LOTE IN (' + grupo.map(l => `'${sqlStr(normLote(l))}'`).join(',') + ')';
       const j = await getJson(endpoint || ENDPOINT_PH, new URLSearchParams({ where, outFields: CAMPOS_PH.join(','), returnGeometry: 'false', f: 'json' }));
       (j.features || []).forEach(ft => {
-        const a = ft.attributes || {}, k = String(a.CODIGO_LOTE || '').trim();
+        const a = ft.attributes || {}, k = normLote(a.CODIGO_LOTE);
         if (k && a.NOMBRE_COPROPIEDAD && !mapa[k]) mapa[k] = {
           nombre: String(a.NOMBRE_COPROPIEDAD).trim(),
           cerrado: String(a.CONJUNTO_CERRADO || '').trim(), tipoPH: String(a.TIPO_PH || '').trim()
@@ -186,19 +197,121 @@
     return Array.from(new Set(nombres));
   }
 
-  // Lotes (CODIGO_LOTE) de un conjunto por su nombre exacto
+  // Dirección del censo PH llevada al formato de PREDIRECC ("CARRERA 19 # 164-53" → "KR 19 164 53")
+  const VIAS_LARGAS = [
+    [/\bAV(?:ENIDA)? (?:CALLE|CL)\b/g, 'AC'], [/\bAV(?:ENIDA)? (?:CARRERA|KR|CRA|CR)\b/g, 'AK'],
+    [/\b(?:CALLE|CLL)\b/g, 'CL'], [/\b(?:CARRERA|CRA|KRA|CR|CRR)\b/g, 'KR'],
+    [/\b(?:DIAGONAL|DIAG)\b/g, 'DG'], [/\b(?:TRANSVERSAL|TRANSV)\b/g, 'TV'], [/\bAVENIDA\b/g, 'AV']
+  ];
+  function normDireccionPH(d) {
+    let t = ' ' + String(d || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '') + ' ';
+    t = t.replace(/\bN[O°º]\.? ?(?=\d)/g, ' ').replace(/[#\-–,.]/g, ' ').replace(/\s+/g, ' ');
+    VIAS_LARGAS.forEach(([re, ab]) => { t = t.replace(re, ab); });
+    t = t.replace(/(\d) ([A-Z])(?= |$)/g, '$1$2'); // "16 A" → "16A"
+    return t.replace(/\s+/g, ' ').trim();
+  }
+
+  // Lotes (CODIGO_LOTE) y direcciones de un conjunto por su nombre
   async function lotesDeConjunto(nombre, endpoint) {
-    const j = await getJson(endpoint || ENDPOINT_PH, new URLSearchParams({
-      where: `NOMBRE_COPROPIEDAD = '${String(nombre).replace(/'/g, "''")}'`, outFields: CAMPOS_PH.join(','), returnGeometry: 'false', f: 'json'
-    }));
-    const feats = (j.features || []).map(ft => ft.attributes || {});
-    return { lotes: Array.from(new Set(feats.map(a => String(a.CODIGO_LOTE || '').trim()).filter(Boolean))), registros: feats };
+    const url = endpoint || ENDPOINT_PH, objetivo = String(nombre).trim().toUpperCase();
+    const pedir = where => getJson(url, new URLSearchParams({ where, outFields: CAMPOS_PH.join(','), returnGeometry: 'false', f: 'json' }))
+      .then(j => (j.features || []).map(ft => ft.attributes || {}));
+    let feats = await pedir(`NOMBRE_COPROPIEDAD = '${String(nombre).replace(/'/g, "''")}'`);
+    // El valor guardado puede traer espacios o mayúsculas distintas: reintentar con LIKE y filtrar aquí
+    if (!feats.length) feats = (await pedir(`UPPER(NOMBRE_COPROPIEDAD) LIKE '%${sqlStr(nombre)}%'`))
+      .filter(a => String(a.NOMBRE_COPROPIEDAD || '').trim().toUpperCase() === objetivo);
+    const uniq = a => Array.from(new Set(a.filter(Boolean)));
+    return {
+      lotes: uniq(feats.map(a => normLote(a.CODIGO_LOTE))),
+      direcciones: uniq(feats.map(a => normDireccionPH(a.DIRECCION))),
+      registros: feats
+    };
+  }
+
+  // Barrio, manzana y predio de un código de lote de 12 dígitos
+  function partesLote(l) {
+    const t = normLote(l);
+    return /^\d{12}$/.test(t) ? { barrio: t.slice(0, 6), manzana: t.slice(6, 9), predio: t.slice(9, 12) } : null;
+  }
+
+  // Campos y tipos de la capa de predios (se piden una vez por endpoint; null si no responde)
+  const cacheCampos = {};
+  function camposCapa(endpoint) {
+    if (!cacheCampos[endpoint]) {
+      cacheCampos[endpoint] = getJson(layerUrl(endpoint), new URLSearchParams({ f: 'json' }))
+        .then(j => { const m = {}; (j.fields || []).forEach(x => { m[x.name] = x.type; }); return Object.keys(m).length ? m : null; })
+        .catch(() => { delete cacheCampos[endpoint]; return null; });
+    }
+    return cacheCampos[endpoint];
+  }
+  const NUMERICO = /Integer|Double|Single|OID/;
+  // Valores para comparar un campo: numérico sin comillas; texto con y sin ceros a la izquierda
+  function valores(v, tipo) {
+    if (NUMERICO.test(tipo || '')) return String(parseInt(v, 10));
+    return Array.from(new Set([v, String(parseInt(v, 10))])).map(x => `'${sqlStr(x)}'`).join(',');
+  }
+  // Cláusula para traer los predios de varios lotes
+  function whereLotes(lotes, estrategia, campos) {
+    const tipo = c => (campos && campos[c]) || '';
+    const ls = lotes.map(normLote).filter(Boolean);
+    if (estrategia === 'barmanpre') {
+      const num = NUMERICO.test(tipo('BARMANPRE'));
+      const v = ls.filter(l => !num || /^\d+$/.test(l)).map(l => (num ? String(parseInt(l, 10)) : `'${sqlStr(l)}'`));
+      return v.length ? `BARMANPRE IN (${v.join(',')})` : '';
+    }
+    return ls.map(partesLote).filter(Boolean).map(p =>
+      `(PRECBARRIO IN (${valores(p.barrio, tipo('PRECBARRIO'))}) AND PRECMANZ IN (${valores(p.manzana, tipo('PRECMANZ'))}) AND PRECPREDIO IN (${valores(p.predio, tipo('PRECPREDIO'))}))`
+    ).join(' OR ');
+  }
+  const trozos = (a, n) => { const r = []; for (let i = 0; i < a.length; i += n) r.push(a.slice(i, i + n)); return r; };
+
+  /* Predios de un conjunto. Prueba en orden, y se queda con la primera que traiga predios:
+     1) BARMANPRE IN (lotes)  2) PRECBARRIO + PRECMANZ + PRECPREDIO del lote  3) dirección del censo.
+     Los lotes van en grupos de 50 para no exceder el largo de la URL.
+     Devuelve también `intentos` (cláusula, total y error de cada estrategia) para explicar un resultado vacío. */
+  async function consultarConjunto(endpoint, f, max, onProgress, conj) {
+    const campos = await camposCapa(endpoint);
+    const tiene = c => !campos || c in campos; // sin metadatos se intenta igual
+    const base = Object.assign({}, f, { lotes: null, dir: null, direccion: '' });
+    const lotes = ((conj && conj.lotes) || []).map(normLote).filter(Boolean);
+    const dirs = ((conj && conj.direcciones) || []).filter(Boolean);
+    const estrategias = [];
+    if (lotes.length && tiene('BARMANPRE')) {
+      estrategias.push({ id: 'barmanpre', desc: 'BARMANPRE = código de lote', grupos: trozos(lotes, 50).map(g => whereLotes(g, 'barmanpre', campos)).filter(Boolean) });
+    }
+    if (lotes.length && ['PRECBARRIO', 'PRECMANZ', 'PRECPREDIO'].every(tiene)) {
+      estrategias.push({ id: 'partes', desc: 'barrio + manzana + predio del lote', grupos: trozos(lotes, 50).map(g => whereLotes(g, 'partes', campos)).filter(Boolean) });
+    }
+    if (dirs.length && tiene('PREDIRECC')) {
+      estrategias.push({ id: 'direccion', desc: 'dirección registrada en el censo PH', grupos: trozos(dirs, 20).map(g => g.map(d => {
+        const s = sqlStr(d); return `PREDIRECC = '${s}' OR PREDIRECC LIKE '${s} %'`;
+      }).join(' OR ')) });
+    }
+    const intentos = [];
+    for (const e of estrategias) {
+      if (!e.grupos.length) continue;
+      const it = { id: e.id, desc: e.desc, where: '', total: 0, error: '' };
+      intentos.push(it);
+      try {
+        const feats = [];
+        for (const g of e.grupos) {
+          if (feats.length >= max) break;
+          const antes = feats.length, previo = it.total;
+          const r = await consultar(endpoint, Object.assign({}, base, { whereExtra: g }), max - antes,
+            (n, t) => onProgress && onProgress(antes + n, previo + t));
+          if (!it.where) it.where = r.where;
+          it.total += r.total; feats.push(...r.features);
+        }
+        if (feats.length) return { where: it.where, total: it.total, features: feats, estrategia: it, intentos, campos };
+      } catch (err) { it.error = err.message; }
+    }
+    return { where: intentos.length ? intentos[0].where : '', total: 0, features: [], estrategia: null, intentos, campos };
   }
 
   // Asigna el nombre del conjunto a cada fila según su lote
   function aplicarConjuntos(filas, mapa) {
     let n = 0;
-    filas.forEach(r => { const c = mapa[r.lote]; if (c) { r.conjunto = c.nombre; r.tipoPH = c.tipoPH; r.cerrado = c.cerrado; n++; } });
+    filas.forEach(r => { const c = mapa[normLote(r.lote)]; if (c) { r.conjunto = c.nombre; r.tipoPH = c.tipoPH; r.cerrado = c.cerrado; n++; } });
     return n;
   }
 
@@ -227,7 +340,7 @@
     return { filas: Array.from(vistos.values()), duplicados, sinChip };
   }
 
-  const api = { listarConjuntos, lotesDeConjunto, ENDPOINT_PH, CAMPOS_PH, codigoLote, consultarConjuntos, aplicarConjuntos, OUT_FIELDS, CAMPOS_CONJUNTO, nombreConjunto, TIPOS_VIA, CUADRANTES, UNIDADES, buildDireccion, buildWhere, buildParams, verificarServicio, consultar, clasificar, normalizar, layerUrl };
+  const api = { listarConjuntos, lotesDeConjunto, normLote, partesLote, normDireccionPH, whereLotes, camposCapa, consultarConjunto, ENDPOINT_PH, CAMPOS_PH, codigoLote, consultarConjuntos, aplicarConjuntos, OUT_FIELDS, CAMPOS_CONJUNTO, nombreConjunto, TIPOS_VIA, CUADRANTES, UNIDADES, buildDireccion, buildWhere, buildParams, verificarServicio, consultar, clasificar, normalizar, layerUrl };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.CatastroAPI = api;
 })(typeof window !== 'undefined' ? window : globalThis);
