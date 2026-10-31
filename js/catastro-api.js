@@ -2,7 +2,7 @@
 (function (root) {
   'use strict';
 
-  const OUT_FIELDS = ['PRECHIP', 'PREDIRECC', 'PRECLASE', 'PRENBARRIO', 'PRECMANZ', 'PRECPREDIO'];
+  const OUT_FIELDS = ['PRECHIP', 'PREDIRECC', 'PRECLASE', 'PRENBARRIO', 'PRECMANZ', 'PRECPREDIO', 'PREUVIVIEN'];
   const PAGE = 1000; // tamaño de página solicitado (el servidor puede limitarlo)
 
   // Escapa comillas simples para SQL y comodines LIKE no se escapan a propósito
@@ -13,7 +13,11 @@
     if (f.chip) w.push(`PRECHIP = '${sqlStr(f.chip)}'`);
     if (f.direccion) w.push(`PREDIRECC LIKE '%${sqlStr(f.direccion)}%'`);
     if (f.barrio) w.push(`PRENBARRIO LIKE '%${sqlStr(f.barrio)}%'`);
-    if (f.clase) w.push(`PRECLASE = '${sqlStr(f.clase)}'`);
+    // Tipo de unidad: GJ y AP salen de la dirección oficial; casa = predio no PH destinado a vivienda
+    if (f.tipo === 'Garaje') w.push("PREDIRECC LIKE '% GJ %'");
+    else if (f.tipo === 'Apartamento') w.push("PREDIRECC LIKE '% AP %'");
+    else if (f.tipo === 'Casa') w.push("PRECLASE = 'N'", "PREUVIVIEN = 'S'");
+    if (f.clase && f.tipo !== 'Casa') w.push(`PRECLASE = '${sqlStr(f.clase)}'`);
     if (f.manzana) w.push(`PRECMANZ = '${sqlStr(f.manzana)}'`);
     if (f.predio) w.push(`PRECPREDIO = '${sqlStr(f.predio)}'`);
     return w.length ? w.join('\nAND ') : '1=1';
@@ -98,6 +102,8 @@
       const key = chip || 'SIN-CHIP-' + (a.PREDIRECC || '') + '-' + vistos.size;
       if (vistos.has(key)) { duplicados++; return; }
       const c = clasificar(a.PREDIRECC);
+      // Predio no PH (clase N) sin sufijo de unidad: casa, salvo que se sepa que no es de vivienda
+      if (c.tipo === 'Otro' && !c.unidad && String(a.PRECLASE || '').trim() === 'N' && String(a.PREUVIVIEN || '').trim() !== 'N') c.tipo = 'Casa';
       vistos.set(key, {
         chip, direccion: (a.PREDIRECC || '').trim(), tipo: c.tipo, interior: c.interior,
         unidad: c.unidad, barrio: (a.PRENBARRIO || '').trim(), manzana: a.PRECMANZ == null ? '' : String(a.PRECMANZ).trim(),

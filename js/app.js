@@ -8,7 +8,7 @@
   function leerForm() {
     return {
       nombre: $('nombre').value.trim(), direccion: $('direccion').value.trim(), barrio: $('barrio').value.trim(),
-      clase: $('clase').value.trim(), chip: $('chip').value.trim(), manzana: $('manzana').value.trim(),
+      clase: $('clase').value.trim(), tipo: $('tipo').value, chip: $('chip').value.trim(), manzana: $('manzana').value.trim(),
       predio: $('predio').value.trim()
     };
   }
@@ -44,6 +44,7 @@
     const cnt = t => filas.filter(r => r.tipo === t).length;
     $('resumen').innerHTML = `<span class="chip">Total: <b>${filas.length}</b></span>` +
       `<span class="chip">Apartamentos: <b>${cnt('Apartamento')}</b></span>` +
+      `<span class="chip">Casas: <b>${cnt('Casa')}</b></span>` +
       `<span class="chip">Garajes: <b>${cnt('Garaje')}</b></span>` +
       `<span class="chip">Otros: <b>${cnt('Otro')}</b></span>` +
       `<span class="chip">Mostrando: <b>${v.length}</b></span>`;
