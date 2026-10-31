@@ -26,7 +26,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace}
 .aviso{border:1px dashed var(--line);border-radius:6px;padding:8px 10px;margin:0 0 12px}
 .head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
 .head .actions{margin-top:0}
-.filtros{display:flex;gap:10px;margin:12px 0;flex-wrap:wrap;align-items:flex-end}
+.filtros{display:flex;gap:10px;margin:12px 0;flex-wrap:wrap;align-items:flex-end;justify-content:space-between}
 .filtros .f-texto{flex:1;min-width:min(100%,220px)}
 .filtros select{width:auto;min-width:120px}
 .tabla-wrap{overflow:auto;max-height:65vh;border:1px solid var(--line);border-radius:6px}
@@ -127,3 +127,6 @@ details.filtrar[open]{padding-bottom:14px}
 #conjLista li.sin{color:var(--muted);cursor:default}
 #conjLista mark{background:none;color:var(--brand);font-weight:700}
 #conjEstado{margin-top:6px}
+.filtros{align-items:center}
+.filtros .seg{margin-top:0}
+.filtros-der{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-left:auto}

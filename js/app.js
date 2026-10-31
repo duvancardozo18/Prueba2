@@ -120,7 +120,7 @@
     return palabras.every(p => hay.includes(' ' + p) || (p.length > 2 && hay.includes(p)));
   }
   function filtrar(sinTipo) {
-    const palabras = norm($('filtroTexto').value).split(' ').filter(Boolean), inte = $('filtroInterior').value;
+    const palabras = [], inte = $('filtroInterior').value;
     return filas.filter(r => (sinTipo || !filtroTipo || r.tipo === filtroTipo) && (!inte || r.interior === inte) && coincideTexto(r, palabras));
   }
   function visibles() {
@@ -159,7 +159,7 @@
     pintarSegmentos();
   }
 
-  function limpiarFiltros() { $('filtroTexto').value = ''; $('filtroInterior').value = ''; filtroTipo = ''; pintar(); }
+  function limpiarFiltros() { $('filtroInterior').value = ''; filtroTipo = ''; pintar(); }
 
   // Completa el nombre del conjunto con la segunda consulta (censo PH) y repinta
   async function completarConjuntos() {
@@ -183,7 +183,7 @@
     const interiores = Array.from(new Set(filas.map(r => r.interior).filter(Boolean))).sort(natural);
     $('filtroInterior').innerHTML = '<option value="">Todos</option>' + interiores.map(i => `<option value="${i.replace(/"/g, '')}">IN ${i.replace(/</g, '&lt;')}</option>`).join('');
     $('filtroInterior').closest('label').hidden = interiores.length < 2;
-    $('filtroTexto').value = ''; filtroTipo = '';
+    filtroTipo = '';
     const al = alertas.slice();
     if (n.duplicados) al.push(`Se descartaron ${n.duplicados} registros repetidos.`);
     if (n.sinChip) al.push(`${n.sinChip} registros no traen CHIP.`);
@@ -395,12 +395,10 @@
   $('btnEjemplo').addEventListener('click', cargarEjemplo);
   $('btnPdf').addEventListener('click', () => {
     const v = visibles(), dir = API.buildDireccion(leerDir());
-    const sub = [$('nombre').value.trim(), dir, filtroTipo && 'Tipo: ' + filtroTipo, $('filtroInterior').value && 'Interior ' + $('filtroInterior').value,
-      $('filtroTexto').value.trim() && 'Texto: ' + $('filtroTexto').value.trim()].filter(Boolean).join(' · ');
+    const sub = [$('nombre').value.trim(), dir, filtroTipo && 'Tipo: ' + filtroTipo, $('filtroInterior').value && 'Interior ' + $('filtroInterior').value].filter(Boolean).join(' · ');
     EXP.descargarPdf(v, nombreArchivo(), { titulo: 'Inmuebles - Catastro Bogotá', subtitulo: sub });
   });
   $('btnXls').addEventListener('click', () => EXP.descargarXls(visibles(), nombreArchivo()));
-  $('filtroTexto').addEventListener('input', pintar);
   $('filtroInterior').addEventListener('change', pintar);
   $('btnLimpiarFiltros').addEventListener('click', limpiarFiltros);
   $('segTipo').addEventListener('click', e => {
