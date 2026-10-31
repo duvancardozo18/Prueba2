@@ -2,7 +2,7 @@
 (function (root) {
   'use strict';
   const COLS = [
-    ['conjunto', 'Conjunto'], ['tipoPH', 'Tipo PH'], ['lote', 'Código lote'], ['chip', 'CHIP'], ['direccion', 'Dirección'], ['tipo', 'Tipo'], ['interior', 'Interior'],
+    ['conjunto', 'Conjunto'], ['tipoPH', 'Tipo PH'], ['lote', 'Código lote'], ['direccion', 'Dirección'], ['tipo', 'Tipo'], ['interior', 'Interior'],
     ['unidad', 'Unidad'], ['barrio', 'Barrio'], ['manzana', 'Manzana'], ['predio', 'Predio'], ['clase', 'Clase']
   ];
 
@@ -48,7 +48,7 @@
     opts = opts || {};
     const W = 842, H = 595, M = 32, FS = 8.5, RH = 15;
     const conConjunto = filas.some(r => r.conjunto);
-    const cols = (conConjunto ? [['conjunto', 'Conjunto', 130]] : []).concat([['chip', 'CHIP', 78], ['direccion', 'Dirección', 210], ['tipo', 'Tipo', 70], ['interior', 'Interior', 48],
+    const cols = (conConjunto ? [['conjunto', 'Conjunto', 130]] : []).concat([['direccion', 'Dirección', 230], ['tipo', 'Tipo', 70], ['interior', 'Interior', 48],
       ['unidad', 'Unidad', 62], ['barrio', 'Barrio', 160], ['manzana', 'Manzana', 50], ['predio', 'Predio', 50]]);
     const suma = cols.reduce((a, c) => a + c[2], 0);
     cols.forEach(c => { c[2] = c[2] * (W - M * 2) / suma; });
