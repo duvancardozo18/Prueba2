@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Buscador de inmuebles – Catastro Bogotá</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<header>
+  <h1>Buscador de inmuebles y unidades privadas</h1>
+  <p>Catastro Bogotá · ArcGIS REST · el CHIP es el identificador de cada unidad</p>
+</header>
+
+<main>
+  <section class="card">
+    <h2>Búsqueda</h2>
+    <form id="form">
+      <div class="grid">
+        <label>Nombre del conjunto (solo referencia)
+          <input id="nombre" value="Rincón del Palmar">
+        </label>
+        <label>Dirección oficial
+          <input id="direccion" value="KR 19 164 53" placeholder="KR 19 164 53">
+        </label>
+        <label>Barrio
+          <input id="barrio" value="EL TOBERIN">
+        </label>
+        <label>Clasificación catastral
+          <input id="clase" value="P" maxlength="3">
+        </label>
+        <label>CHIP (opcional)
+          <input id="chip" placeholder="AAA0107SFDE">
+        </label>
+        <label>Código de manzana (opcional)
+          <input id="manzana" placeholder="19">
+        </label>
+        <label>Código de predio (opcional)
+          <input id="predio" placeholder="27">
+        </label>
+        <label>Máximo de resultados
+          <input id="max" type="number" value="2000" min="1" max="20000">
+        </label>
+      </div>
+      <details>
+        <summary>Configuración del servicio</summary>
+        <label>Endpoint (capa /query)
+          <input id="endpoint" value="https://serviciosgis.catastrobogota.gov.co/arcgis/rest/services/catastro/lote/MapServer/3/query">
+        </label>
+        <p class="hint">Este endpoint quedó como referencia y debe verificarse: abra la URL sin <code>/query</code> en el navegador y confirme la capa y sus campos.</p>
+      </details>
+      <div class="actions">
+        <button type="submit" id="btnBuscar">Buscar</button>
+        <button type="button" id="btnVerificar" class="sec">Verificar servicio</button>
+        <button type="button" id="btnPegar" class="sec">Cargar JSON pegado</button>
+        <button type="button" id="btnEjemplo" class="sec">Ver ejemplo</button>
+      </div>
+    </form>
+    <div id="estado" class="estado" role="status"></div>
+    <details>
+      <summary>Consulta generada</summary>
+      <pre id="sqlOut"></pre>
+    </details>
+    <details id="pegarBox">
+      <summary>Pegar respuesta JSON de ArcGIS (modo manual)</summary>
+      <textarea id="jsonPegado" rows="6" placeholder='{"features":[{"attributes":{...}}]}'></textarea>
+    </details>
+  </section>
+
+  <section class="card" id="resultados" hidden>
+    <div class="head">
+      <h2>Resultados</h2>
+      <div class="actions">
+        <button id="btnCsv" class="sec">Exportar CSV</button>
+        <button id="btnXls" class="sec">Exportar Excel</button>
+      </div>
+    </div>
+    <div id="resumen" class="resumen"></div>
+    <div class="filtros">
+      <input id="filtroTexto" placeholder="Filtrar por dirección o CHIP…">
+      <select id="filtroTipo">
+        <option value="">Todos los tipos</option>
+        <option>Apartamento</option>
+        <option>Garaje</option>
+        <option>Otro</option>
+      </select>
+    </div>
+    <div class="tabla-wrap">
+      <table id="tabla">
+        <thead>
+          <tr>
+            <th data-k="chip">CHIP</th><th data-k="direccion">Dirección</th>
+            <th data-k="tipo">Tipo</th><th data-k="interior">Interior</th>
+            <th data-k="unidad">Unidad</th><th data-k="barrio">Barrio</th>
+            <th data-k="manzana">Manzana</th><th data-k="predio">Predio</th>
+            <th data-k="clase">Clase</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div id="alertas"></div>
+  </section>
+</main>
+
+<script src="js/catastro-api.js"></script>
+<script src="js/export.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
