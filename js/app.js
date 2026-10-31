@@ -163,17 +163,21 @@
 
   // Completa el nombre del conjunto con la segunda consulta (censo PH) y repinta
   async function completarConjuntos() {
-    const lotes = filas.map(r => r.lote).filter(Boolean);
-    if (!lotes.length) return;
+    if (!filas.length) return;
+    const ep = $('endpointPH').value.trim();
     $('cuentaConj').textContent = 'Buscando nombre del conjunto…';
-    try {
-      const mapa = await API.consultarConjuntos(lotes, $('endpointPH').value.trim());
-      const n = API.aplicarConjuntos(filas, mapa);
-      $('cuentaConj').textContent = n ? '' : 'El censo PH no reporta nombre de conjunto para este lote.';
-      if (n) pintar();
-    } catch (e) {
-      $('cuentaConj').textContent = 'No se pudo consultar el nombre del conjunto (' + e.message + ').';
+    let n = 0, err = '';
+    // 1) Por código de lote (BARMANPRE) cuando la capa lo trae
+    const lotes = filas.map(r => r.lote).filter(Boolean);
+    if (lotes.length) {
+      try { n += API.aplicarConjuntos(filas, await API.consultarConjuntos(lotes, ep)); } catch (e) { err = e.message; }
     }
+    // 2) Respaldo: copropiedades del barrio emparejadas por manzana/predio o dirección
+    if (filas.some(r => !r.tipoPH)) {
+      try { n += await API.conjuntosPorBarrio(filas.filter(r => !r.tipoPH), ep); } catch (e) { err = err || e.message; }
+    }
+    $('cuentaConj').textContent = n ? '' : (err ? 'No se pudo consultar el nombre del conjunto (' + err + ').' : 'El censo PH no reporta nombre de conjunto para este predio.');
+    if (n) pintar();
   }
 
   function mostrar(n, alertas, conConjunto) {

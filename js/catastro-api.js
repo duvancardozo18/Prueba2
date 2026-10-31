@@ -308,6 +308,41 @@
     return { where: intentos.length ? intentos[0].where : '', total: 0, features: [], estrategia: null, intentos, campos };
   }
 
+  /* Respaldo cuando el predio no trae código de lote (la capa no publica BARMANPRE ni PRECBARRIO):
+     se piden las copropiedades del barrio en el censo PH y se emparejan por
+     (a) manzana + predio = últimos 6 dígitos de CODIGO_LOTE, o (b) dirección base igual. */
+  const SUFIJO_UNIDAD = / (?:IN|INT|AP|GJ|LC|OF|DP|BG|CS|CA|PA|PQ|ZV|TE|LO|TO|ET|BL|PI|UN|MZ|SO|PS|CN) .*$/;
+  function direccionBase(d) { return String(d || '').toUpperCase().replace(/\s+/g, ' ').trim().replace(SUFIJO_UNIDAD, ''); }
+  const pad3 = v => { const t = String(v == null ? '' : v).trim(); return /^\d+$/.test(t) ? t.padStart(3, '0').slice(-3) : ''; };
+
+  async function conjuntosPorBarrio(filas, endpoint) {
+    const url = endpoint || ENDPOINT_PH;
+    const barrios = Array.from(new Set(filas.map(r => String(r.barrio || '').trim().toUpperCase()).filter(Boolean))).slice(0, 10);
+    const regs = [];
+    for (const b of barrios) {
+      const pedir = where => getJson(url, new URLSearchParams({ where, outFields: CAMPOS_PH.join(','), returnGeometry: 'false', resultRecordCount: 2000, f: 'json' }))
+        .then(j => (j.features || []).map(ft => ft.attributes || {}));
+      let r = await pedir(`NOMBRE_BARRIO_CATASTRO = '${sqlStr(b)}'`);
+      if (!r.length) r = await pedir(`UPPER(NOMBRE_BARRIO_CATASTRO) LIKE '%${sqlStr(b)}%'`);
+      regs.push(...r.map(a => Object.assign({ _barrio: b }, a)));
+    }
+    const porMzPr = {}, porDir = {};
+    regs.forEach(a => {
+      if (!a.NOMBRE_COPROPIEDAD) return;
+      const c = { nombre: String(a.NOMBRE_COPROPIEDAD).trim(), cerrado: String(a.CONJUNTO_CERRADO || '').trim(), tipoPH: String(a.TIPO_PH || '').trim(), lote: normLote(a.CODIGO_LOTE) };
+      if (/^\d{12}$/.test(c.lote)) porMzPr[a._barrio + '|' + c.lote.slice(6)] = porMzPr[a._barrio + '|' + c.lote.slice(6)] || c;
+      const d = normDireccionPH(a.DIRECCION); if (d) porDir[d] = porDir[d] || c;
+    });
+    let n = 0;
+    filas.forEach(r => {
+      if (r.conjunto && r.tipoPH) return;
+      const k = String(r.barrio || '').trim().toUpperCase() + '|' + pad3(r.manzana) + pad3(r.predio);
+      const c = (pad3(r.manzana) && pad3(r.predio) && porMzPr[k]) || porDir[direccionBase(r.direccion)];
+      if (c) { r.conjunto = c.nombre; r.tipoPH = c.tipoPH; r.cerrado = c.cerrado; if (!r.lote) r.lote = c.lote; n++; }
+    });
+    return n;
+  }
+
   // Asigna el nombre del conjunto a cada fila según su lote
   function aplicarConjuntos(filas, mapa) {
     let n = 0;
@@ -340,7 +375,7 @@
     return { filas: Array.from(vistos.values()), duplicados, sinChip };
   }
 
-  const api = { listarConjuntos, lotesDeConjunto, normLote, partesLote, normDireccionPH, whereLotes, camposCapa, consultarConjunto, ENDPOINT_PH, CAMPOS_PH, codigoLote, consultarConjuntos, aplicarConjuntos, OUT_FIELDS, CAMPOS_CONJUNTO, nombreConjunto, TIPOS_VIA, CUADRANTES, UNIDADES, buildDireccion, buildWhere, buildParams, verificarServicio, consultar, clasificar, normalizar, layerUrl };
+  const api = { conjuntosPorBarrio, direccionBase, listarConjuntos, lotesDeConjunto, normLote, partesLote, normDireccionPH, whereLotes, camposCapa, consultarConjunto, ENDPOINT_PH, CAMPOS_PH, codigoLote, consultarConjuntos, aplicarConjuntos, OUT_FIELDS, CAMPOS_CONJUNTO, nombreConjunto, TIPOS_VIA, CUADRANTES, UNIDADES, buildDireccion, buildWhere, buildParams, verificarServicio, consultar, clasificar, normalizar, layerUrl };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.CatastroAPI = api;
 })(typeof window !== 'undefined' ? window : globalThis);
