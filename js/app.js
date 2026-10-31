@@ -254,7 +254,12 @@
   $('btnVerificar').addEventListener('click', verificar);
   $('btnPegar').addEventListener('click', () => cargarPegado());
   $('btnEjemplo').addEventListener('click', cargarEjemplo);
-  $('btnCsv').addEventListener('click', () => EXP.descargarCsv(visibles(), nombreArchivo()));
+  $('btnPdf').addEventListener('click', () => {
+    const v = visibles(), dir = API.buildDireccion(leerDir());
+    const sub = [$('nombre').value.trim(), dir, filtroTipo && 'Tipo: ' + filtroTipo, $('filtroInterior').value && 'Interior ' + $('filtroInterior').value,
+      $('filtroTexto').value.trim() && 'Texto: ' + $('filtroTexto').value.trim()].filter(Boolean).join(' · ');
+    EXP.descargarPdf(v, nombreArchivo(), { titulo: 'Inmuebles - Catastro Bogotá', subtitulo: sub });
+  });
   $('btnXls').addEventListener('click', () => EXP.descargarXls(visibles(), nombreArchivo()));
   $('filtroTexto').addEventListener('input', pintar);
   $('filtroInterior').addEventListener('change', pintar);

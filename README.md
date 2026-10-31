@@ -7,7 +7,7 @@ Aplicación web estática (HTML + CSS + JavaScript, sin backend ni dependencias)
 1. Abra `index.html` en el navegador (o sírvala con `python3 -m http.server`).
 2. Elija la dirección con las listas (tipo de vía, número, letra, BIS, cruce, placa, cuadrante). La app arma el texto en el formato de `PREDIRECC`, p. ej. `KR 19 164 53`.
 3. Pulse **Buscar inmuebles**.
-4. Filtre los resultados por tipo (pestañas con conteo), interior/torre o texto (`AP 101`, `GJ 5`…), ordene por columna y descargue **CSV** o **Excel** (incluye el CHIP).
+4. Filtre los resultados por tipo (pestañas con conteo), interior/torre o texto (`AP 101`, `GJ 5`…), ordene por columna y descargue **PDF** o **Excel** (incluye el CHIP).
 5. La pestaña **Info** reúne lo técnico: endpoint, verificación del servicio, consulta generada, carga manual de JSON y ejemplo.
 
 ## Qué hace
@@ -31,7 +31,7 @@ Aplicación web estática (HTML + CSS + JavaScript, sin backend ni dependencias)
 index.html
 css/styles.css
 js/catastro-api.js   consulta, paginación, clasificación
-js/export.js         CSV / Excel
+js/export.js         PDF / Excel (sin dependencias)
 js/app.js            interfaz
 ```
 
